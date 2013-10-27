@@ -9,7 +9,7 @@
 namespace gr {
   namespace fast_square {
 
-    class SDRP_API freq_stitcher : virtual public gr::sync_block
+    class FAST_SQUARE_API freq_stitcher : virtual public gr::sync_block
     {
     public:
       // gr::digital::framer_sink_1::sptr

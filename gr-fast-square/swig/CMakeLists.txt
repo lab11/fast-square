@@ -35,23 +35,23 @@ foreach(incdir ${GNURADIO_RUNTIME_INCLUDE_DIRS})
     list(APPEND GR_SWIG_INCLUDE_DIRS ${incdir}/gnuradio/swig)
 endforeach(incdir)
 
-set(GR_SWIG_LIBRARIES gnuradio-fast-square)
-set(GR_SWIG_DOC_FILE ${CMAKE_CURRENT_BINARY_DIR}/fast-square_swig_doc.i)
+set(GR_SWIG_LIBRARIES gnuradio-fast_square)
+set(GR_SWIG_DOC_FILE ${CMAKE_CURRENT_BINARY_DIR}/fast_square_swig_doc.i)
 set(GR_SWIG_DOC_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
-GR_SWIG_MAKE(fast-square_swig fast-square_swig.i)
+GR_SWIG_MAKE(fast_square_swig fast_square_swig.i)
 
 ########################################################################
 # Install the build swig module
 ########################################################################
-GR_SWIG_INSTALL(TARGETS fast-square_swig DESTINATION ${GR_PYTHON_DIR}/fast-square)
+GR_SWIG_INSTALL(TARGETS fast_square_swig DESTINATION ${GR_PYTHON_DIR}/fast_square)
 
 ########################################################################
 # Install swig .i files for development
 ########################################################################
 install(
     FILES
-    fast-square_swig.i
-    ${CMAKE_CURRENT_BINARY_DIR}/fast-square_swig_doc.i
-    DESTINATION ${GR_INCLUDE_DIR}/fast-square/swig
+    fast_square_swig.i
+    ${CMAKE_CURRENT_BINARY_DIR}/fast_square_swig_doc.i
+    DESTINATION ${GR_INCLUDE_DIR}/fast_square/swig
 )

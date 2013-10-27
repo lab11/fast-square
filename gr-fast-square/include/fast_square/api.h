@@ -1,6 +1,5 @@
-/* -*- c++ -*- */
 /*
- * Copyright 2012 Free Software Foundation, Inc.
+ * Copyright 2011 Free Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -20,19 +19,15 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef _QA_FAST-SQUARE_H_
-#define _QA_FAST-SQUARE_H_
+#ifndef INCLUDED_FAST_SQUARE_API_H
+#define INCLUDED_FAST_SQUARE_API_H
 
 #include <gnuradio/attributes.h>
-#include <cppunit/TestSuite.h>
 
-//! collect all the tests for the gr-filter directory
+#ifdef gnuradio_fast_square_EXPORTS
+#  define FAST_SQUARE_API __GR_ATTR_EXPORT
+#else
+#  define FAST_SQUARE_API __GR_ATTR_IMPORT
+#endif
 
-class __GR_ATTR_EXPORT qa_fast-square
-{
- public:
-  //! return suite of tests for all of gr-filter directory
-  static CppUnit::TestSuite *suite();
-};
-
-#endif /* _QA_FAST-SQUARE_H_ */
+#endif /* INCLUDED_FAST_SQUARE_API_H */

@@ -7,6 +7,7 @@
 #include <gnuradio/io_signature.h>
 #include <cstdio>
 #include <string>
+#include <fstream>
 
 #define STATE_RESET 0
 #define STATE_RCV 1
@@ -17,7 +18,7 @@ namespace fast_square {
 
 freq_stitcher::sptr freq_stitcher::make(std::string cal_file, unsigned int num_freqs){
 	return gnuradio::get_initial_sptr
-		(new freq_stitcher_impl(std::string cal_file, unsigned int num_freqs));
+		(new freq_stitcher_impl(cal_file, num_freqs));
 }
 
 freq_stitcher_impl::freq_stitcher_impl(std::string cal_file, unsigned int in_num_freqs)
@@ -34,7 +35,7 @@ freq_stitcher_impl::~freq_stitcher_impl(){
 }
 
 void freq_stitcher_impl::readCal(std::string in_cal_file){
-	std::ifstream calfile(in_cal_file);
+	std::ifstream calfile(in_cal_file.c_str());
 	for(unsigned int ii=0; ii < num_freqs; ii++){
 		float real, imag;
 		calfile >> real >> imag;

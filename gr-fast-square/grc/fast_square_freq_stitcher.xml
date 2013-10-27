@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <block>
   <name>freq_stitcher</name>
-  <key>fast-square_freq_stitcher</key>
-  <category>fast-square</category>
-  <import>import fast-square</import>
-  <make>fast-square.freq_stitcher($cal_file, $num_freqs)</make>
+  <key>fast_square_freq_stitcher</key>
+  <category>fast_square</category>
+  <import>import fast_square</import>
+  <make>fast_square.freq_stitcher($cal_file, $num_freqs)</make>
   <!-- Make one 'param' node for every Parameter you want settable from the GUI.
        Sub-nodes:
        * name

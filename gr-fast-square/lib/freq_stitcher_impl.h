@@ -14,11 +14,12 @@ namespace gr {
       int subfreq_idx;
       unsigned int num_freqs;
       std::vector<gr_complex> cal_data;
+      void readCal(std::string in_cal_file);
 
     protected:
 
     public:
-      freq_stitcher_impl(std:;string cal_file, unsigned int num_freqs);
+      freq_stitcher_impl(std::string cal_file, unsigned int num_freqs);
       ~freq_stitcher_impl();
 
       int work(int noutput_items,

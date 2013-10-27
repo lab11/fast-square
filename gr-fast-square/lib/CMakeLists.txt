@@ -25,18 +25,18 @@ include(GrPlatform) #define LIB_SUFFIX
 include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
 
-list(APPEND fast-square_sources
+list(APPEND fast_square_sources
     freq_stitcher_impl.cc
 )
 
-add_library(gnuradio-fast-square SHARED ${fast-square_sources})
-target_link_libraries(gnuradio-fast-square ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES})
-set_target_properties(gnuradio-fast-square PROPERTIES DEFINE_SYMBOL "gnuradio_fast-square_EXPORTS")
+add_library(gnuradio-fast_square SHARED ${fast_square_sources})
+target_link_libraries(gnuradio-fast_square ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES})
+set_target_properties(gnuradio-fast_square PROPERTIES DEFINE_SYMBOL "gnuradio_fast_square_EXPORTS")
 
 ########################################################################
 # Install built library files
 ########################################################################
-install(TARGETS gnuradio-fast-square
+install(TARGETS gnuradio-fast_square
     LIBRARY DESTINATION lib${LIB_SUFFIX} # .so/.dylib file
     ARCHIVE DESTINATION lib${LIB_SUFFIX} # .lib file
     RUNTIME DESTINATION bin              # .dll file
@@ -45,23 +45,21 @@ install(TARGETS gnuradio-fast-square
 ########################################################################
 # Build and register unit test
 ########################################################################
-include(GrTest)
-
-include_directories(${CPPUNIT_INCLUDE_DIRS})
-
-list(APPEND test_fast-square_sources
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_fast-square.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/qa_fast-square.cc
-)
-
-add_executable(test-fast-square ${test_fast-square_sources})
-
-target_link_libraries(
-  test-fast-square
-  ${GNURADIO_RUNTIME_LIBRARIES}
-  ${Boost_LIBRARIES}
-  ${CPPUNIT_LIBRARIES}
-  gnuradio-fast-square
-)
-
-GR_ADD_TEST(test_fast-square test-fast-square)
+# include(GrTest)
+# 
+# include_directories(${CPPUNIT_INCLUDE_DIRS})
+# 
+# list(APPEND test_fast_square_sources
+# )
+# 
+# add_executable(test-fast_square ${test_fast_square_sources})
+# 
+# target_link_libraries(
+#   test-fast_square
+#   ${GNURADIO_RUNTIME_LIBRARIES}
+#   ${Boost_LIBRARIES}
+#   ${CPPUNIT_LIBRARIES}
+#   gnuradio-fast_square
+# )
+# 
+# GR_ADD_TEST(test_fast_square test-fast_square)
