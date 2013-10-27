@@ -15,17 +15,19 @@ module fast_square_controller(
 	output reg freq_step_out
 );
 
+parameter NUM_FREQ_STEPS = 14;
 parameter RECORD_TICKS = 15000;
 
 reg [3:0] state, next_state;
 reg [7:0] freq_step_count;
 reg [15:0] record_count;
 reg next_freq_step_reset;
+reg next_freq_step;
 reg freq_step_count_incr;
 reg freq_step_count_reset;
 wire pll_locked_db;
 
-debouce db0(.clock(clock), .in(pll_locked), .out(pll_locked_db));
+debounce db0(.clk(clock), .in(pll_locked), .out(pll_locked_db));
 
 always @(posedge clock) begin
 	if(reset) begin
@@ -39,9 +41,9 @@ always @(posedge clock) begin
 		freq_step_reset_out <= next_freq_step_reset;
 		freq_step_out <= next_freq_step;
 		if(rx_record)
-			record_count <= record_count + 1;
+			record_count <= record_count + 16'd1;
 		if(freq_step_count_incr)
-			freq_step_count <= freq_step_count + 1;
+			freq_step_count <= freq_step_count + 8'd1;
 		if(freq_step_count_reset)
 			freq_step_count <= 0;
 	end
@@ -53,7 +55,7 @@ next_freq_step_reset = 1'b0;
 next_freq_step = 1'b0;
 rx_record = 1'b0;
 rx_next = 1'b0;
-rx_reset = 1'b1;
+rx_reset = 1'b0;
 freq_step_count_incr = 1'b0;
 freq_step_count_reset = 1'b0;
 case(state)

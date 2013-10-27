@@ -29,7 +29,7 @@ module fast_square_rx
    input wire [15:0] i_in,
    input wire [15:0] q_in,
    output wire [15:0] i_out,
-   output wire [15:0] q_out,
+   output wire [15:0] q_out
    );
 
    parameter CARRIERFREQADDR = 0;
@@ -46,6 +46,7 @@ module fast_square_rx
    setting_reg #(CARRIERFREQADDR) sr_rxfreq0(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(carrier_freq_set));
    setting_reg #(SUBCARRIERFREQADDR) sr_rxfreq1(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(subcarrier_freq_set));
 
+	reg [31:0] carrier_phase;
    reg [31:0] subcarrier_phase [NUM_SUBCARRIERS-1:0];
    reg signed [31:0] subcarrier_freq [NUM_SUBCARRIERS-1:0];
 
@@ -54,7 +55,7 @@ module fast_square_rx
    wire [15:0] bb_q[NUM_SUBCARRIERS-1:0];
    genvar i;
    generate
-     for(i=0; i < NUM_SUBCARRIERS; i=i+1) begin
+     for(i=0; i < NUM_SUBCARRIERS; i=i+1) begin:COR
        cordic rx_cordic
          ( .clock(clock),.reset(reset),.enable(1'b1), 
            .xi(i_in),.yi(q_in),.zi(carrier_phase[31:16] + subcarrier_phase[i][31:16]),
@@ -123,7 +124,7 @@ module fast_square_rx
        
        //Final code used for dispatching the received subcarrier sums
        if(data_out_strobe && new_data) begin
-         new_data_ctr <= #1 new_data_ctr + 1;
+         new_data_ctr <= #1 new_data_ctr + 4'd1;
 	 if(new_data_ctr == NUM_SUBCARRIERS-1) begin
 	   new_data <= #1 1'b0;
 	   new_data_ctr <= #1 0;

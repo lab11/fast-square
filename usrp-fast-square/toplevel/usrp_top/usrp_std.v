@@ -81,8 +81,8 @@ module usrp_std
 
    wire   tx_underrun, rx_overrun;    
    wire   clear_status = FX2_1;
-   assign FX2_2 = rx_overrun;
-   assign FX2_3 = tx_underrun;
+   //assign FX2_2 = rx_overrun;
+   //assign FX2_3 = tx_underrun;
       
    wire [15:0] usbdata_out;
    
@@ -253,13 +253,16 @@ module usrp_std
 
    parameter RECORD_TICKS = 15000;
    parameter RECORD_TICKS_LOG2 = 14;
+	parameter NUM_FREQ_STEPS = 14;
    
    wire fast_square_pll_locked;
    assign fast_square_pll_locked = io_rx_b[15];
    wire fast_square_freq_step_reset;
    wire fast_square_freq_step;
    wire fast_square_rx_record;
-   fast_square_controller #(RECORD_TICKS) fsc(
+	wire fast_square_rx_reset;
+	wire fast_square_rx_next;
+   fast_square_controller #(NUM_FREQ_STEPS,RECORD_TICKS) fsc(
        .clock(clk64),
        .reset(rx_dsp_reset),
        .pll_locked(fast_square_pll_locked),
@@ -267,7 +270,7 @@ module usrp_std
        .freq_step_out(fast_square_freq_step),
        .rx_reset(fast_square_rx_reset),
        .rx_next(fast_square_rx_next),
-       .rx_record(fast_square_record)
+       .rx_record(fast_square_rx_record)
    );
    assign FX2_2 = fast_square_freq_step;//OVERRUN
    assign FX2_3 = fast_square_freq_step_reset;//UNDERRUN
