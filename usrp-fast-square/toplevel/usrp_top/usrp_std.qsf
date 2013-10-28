@@ -27,7 +27,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 3.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "00:14:04  JULY 13, 2003"
-set_global_assignment -name LAST_QUARTUS_VERSION "7.1 SP1"
+set_global_assignment -name LAST_QUARTUS_VERSION "11.0 SP1"
 
 # Pin & Location Assignments
 # ==========================
@@ -252,7 +252,7 @@ set_global_assignment -name MAX_SCC_SIZE 50
 set_global_assignment -name EDA_SIMULATION_TOOL "<None>"
 set_global_assignment -name EDA_TIMING_ANALYSIS_TOOL "<NONE>"
 set_global_assignment -name EDA_BOARD_DESIGN_TOOL "<NONE>"
-set_global_assignment -name EDA_FORMAL_VERIFICATION_TOOL "<NONE>"
+set_global_assignment -name EDA_FORMAL_VERIFICATION_TOOL "<None>"
 set_global_assignment -name EDA_RESYNTHESIS_TOOL "<NONE>"
 
 # Assembler Assignments
@@ -278,7 +278,6 @@ set_global_assignment -name NONSYNCHSTRUCT_RULE_ASYN_RAM OFF
 set_global_assignment -name CLK_CAT OFF
 set_global_assignment -name CLK_RULE_COMB_CLOCK OFF
 set_global_assignment -name CLK_RULE_INV_CLOCK OFF
-set_global_assignment -name CLK_RULE_GATING_SCHEME OFF
 set_global_assignment -name CLK_RULE_INPINS_CLKNET OFF
 set_global_assignment -name CLK_RULE_CLKNET_CLKSPINES OFF
 set_global_assignment -name CLK_RULE_MIX_EDGES OFF
@@ -368,8 +367,13 @@ set_instance_assignment -name CLOCK_SETTINGS master_clk -to master_clk
 # end ENTITY(usrp_std)
 # --------------------
 
-set_instance_assignment -name PARTITION_HIERARCHY no_file_for_top_partition -to | -section_id Top
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_global_assignment -name VERILOG_FILE ../../sdr_lib/debounce.v
+set_global_assignment -name VERILOG_FILE ../../sdr_lib/fast_square_controller.v
+set_global_assignment -name VERILOG_FILE ../../sdr_lib/fast_square_rx.v
+set_global_assignment -name VERILOG_FILE ../../sdr_lib/rx_chain_submod.v
 set_global_assignment -name VERILOG_FILE ../../megacells/fifo_4k_18.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/atr_delay.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/cic_dec_shifter.v
@@ -407,3 +411,4 @@ set_global_assignment -name VERILOG_FILE ../../sdr_lib/clk_divider.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/serial_io.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/strobe_gen.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/sign_extend.v
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

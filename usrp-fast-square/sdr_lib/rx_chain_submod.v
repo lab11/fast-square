@@ -42,7 +42,7 @@ module rx_chain_submod
    parameter FREQADDR = 0;
    parameter PHASEADDR = 0;
    
-   wire [31:0] phase;
+   reg [31:0] phase;
    wire [15:0] bb_i, bb_q;
    wire [15:0] bb_i_mid, bb_q_mid;
    wire [15:0] hb_in_i, hb_in_q;
@@ -52,10 +52,12 @@ module rx_chain_submod
    assign bb_i = bb_i_mid + i_in;
    assign bb_q = bb_i_mid + q_in;
 
-    phase_acc #(FREQADDR,PHASEADDR,32) rx_phase_acc
-     (.clk(clock),.reset(reset),.enable(enable),
-      .serial_addr(serial_addr),.serial_data(serial_data),.serial_strobe(serial_strobe),
-      .strobe(sample_strobe),.phase(phase) );
+   always @(posedge clock) begin
+     if(reset)
+       phase <= #1 32'b0;
+     else
+       phase <= #1 phase + 32'd261724569;
+   end
 
    cordic rx_cordic
      ( .clock(clock),.reset(reset),.enable(enable), 
