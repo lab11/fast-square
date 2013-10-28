@@ -24,7 +24,7 @@ freq_stitcher::sptr freq_stitcher::make(std::string cal_file, unsigned int num_f
 freq_stitcher_impl::freq_stitcher_impl(std::string cal_file, unsigned int in_num_freqs)
 	: sync_block("freq_stitcher",
 			io_signature::make(1, 1, sizeof(gr_complex)),
-			io_signature::make(1, 1, sizeof(gr_complex)*num_freqs)),
+			io_signature::make(1, 1, sizeof(gr_complex))),
 	num_freqs(in_num_freqs)
 {
 	state = STATE_RESET;

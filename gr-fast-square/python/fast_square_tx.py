@@ -196,7 +196,7 @@ if __name__ == '__main__':
     parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
     parser.add_option("-s", "--samp-rate", dest="samp_rate", type="eng_float", default=eng_notation.num_to_str(1e6),
         help="Set Sample Rate [default=%default]")
-    parser.add_option("-g", "--gain", dest="gain", type="eng_float", default=eng_notation.num_to_str(0),
+    parser.add_option("-g", "--gain", dest="gain", type="eng_float", default=eng_notation.num_to_str(28.5),
         help="Set Default Gain [default=%default]")
     parser.add_option("-f", "--freq", dest="freq", type="eng_float", default=eng_notation.num_to_str(5.8e9),
         help="Set Default Frequency [default=%default]")
