@@ -28,6 +28,7 @@ import threading
 import time
 import wx
 import math
+import scopesink_cir
 
 class uhd_fft(grc_wxgui.top_block_gui):
 
