@@ -28,6 +28,7 @@ import threading
 import time
 import wx
 import math
+import scopesink_cir
 
 class uhd_fft(grc_wxgui.top_block_gui):
 
@@ -161,22 +162,26 @@ class uhd_fft(grc_wxgui.top_block_gui):
         )
         self.nb0.GetPage(2).Add(self.scopesink_2.win)
         def _freq_tracker():
-        	while True and self.test == False:
+        	while True:
 			carrier_freq = self.carrier_tracking.get_frequency()
 			carrier_reg = -carrier_freq/2/math.pi*self.samp_rate/64e6
 			if carrier_reg < 0:
 				carrier_reg = carrier_reg + 1.0
 			carrier_reg = int(carrier_reg*(2**32))
-			self.source.set_user_register(64+0,carrier_reg)    #Write to FR_USER_0 (Carrier offset reg)
+			if self.test == False:
+				self.source.set_user_register(64+0,carrier_reg)    #Write to FR_USER_0 (Carrier offset reg)
 
 			subcarrier_freq = self.subcarrier_tracking.get_frequency()
 			subcarrier_reg = -subcarrier_freq/2/math.pi*self.samp_rate/64e6
 			if subcarrier_reg < 0:
 				subcarrier_reg = subcarrier_reg + 1.0
 			subcarrier_reg = int(subcarrier_reg*(2**32))
-			self.source.set_user_register(64+1,subcarrier_reg) #Write to FR_USER_1 (Subcarrier freq reg)
+			if self.test == False:
+				self.source.set_user_register(64+1,subcarrier_reg) #Write to FR_USER_1 (Subcarrier freq reg)
 
-        		time.sleep(1.0/(1000))
+			print "carrier_freq = %f, \t subcarrier_freq = %f, \t carrier_reg = %d, \t subcarrier_reg = %d" % (carrier_freq, subcarrier_freq, carrier_reg, subcarrier_reg)
+
+        		time.sleep(1.0/(10))
 
         _freq_tracker_thread = threading.Thread(target=_freq_tracker)
         _freq_tracker_thread.daemon = True
@@ -191,8 +196,8 @@ class uhd_fft(grc_wxgui.top_block_gui):
         self.multiply_1 = blocks.multiply_vcc(1)
         self.carrier_est = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, 100000, 1, 0)
         self.subcarrier_est = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, 200000, 1, 0)
-        self.carrier_tracking = analog.pll_carriertracking_cc(0.001, .03, -.03)
-        self.subcarrier_tracking = analog.pll_carriertracking_cc(0.001, .03, -0.03)
+        self.carrier_tracking = analog.pll_carriertracking_cc(0.0001, .03, -.03)
+        self.subcarrier_tracking = analog.pll_carriertracking_cc(0.0001, .03, -0.03)
 #	self.stitcher = fast_square.freq_stitcher("cal.dat",14)
 #	if self.test == True:
 #		self.connect(self.source_freqs, self.stitcher)
