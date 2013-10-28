@@ -4,7 +4,7 @@ num_freq_steps = 14;
 num_subfreqs = 4;
 filler_len = 300;
 
-time = (0:length(baseband_rx)-1)/sample_rate;
+time = (0:num_samples-1)/sample_rate;
 
 baseband_rx = zeros(1,num_samples);
 baseband_rx = baseband_rx + 0.25*exp(-1i*time*100e3*2*pi);
@@ -25,11 +25,11 @@ stitcher_rx = stitcher_rx(1:num_samples);
 baseband_int = [real(baseband_rx);imag(baseband_rx)];
 
 fid = fopen('test.dat','w');
-fwrite(baseband_int(:),'float');
+fwrite(fid,baseband_int(:),'float');
 fclose(fid);
 
 stitcher_int = [real(stitcher_rx);imag(stitcher_rx)];
 fid = fopen('test_freqs.dat','w');
-fwrite(stitcher_int(:),'float');
+fwrite(fid,stitcher_int(:),'float');
 fclose(fid);
 
