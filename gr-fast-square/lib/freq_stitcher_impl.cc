@@ -24,7 +24,7 @@ freq_stitcher::sptr freq_stitcher::make(std::string cal_file, unsigned int num_f
 freq_stitcher_impl::freq_stitcher_impl(std::string cal_file, unsigned int in_num_freqs)
 	: sync_block("freq_stitcher",
 			io_signature::make(1, 1, sizeof(gr_complex)),
-			io_signature::make(1, 1, sizeof(gr_complex))),
+			io_signature::make(0, 1, sizeof(gr_complex))),
 	num_freqs(in_num_freqs)
 {
 	state = STATE_RESET;
@@ -40,8 +40,10 @@ void freq_stitcher_impl::readCal(std::string in_cal_file){
 		float real, imag;
 		calfile >> real >> imag;
 		cal_data.push_back(gr_complex(real, imag));
+//		std::cout << "cal_data[" << ii << "] = " << cal_data[cal_data.size()-1] << std::endl;
 	}
 	calfile.close();
+//	std::cout << "num_freqs = " << num_freqs << std::endl;
 }
 
 int freq_stitcher_impl::work(int noutput_items,
@@ -49,7 +51,7 @@ int freq_stitcher_impl::work(int noutput_items,
 		gr_vector_void_star &output_items){
 
 	const gr_complex *in = (const gr_complex *) input_items[0];
-	gr_complex *out = (gr_complex *) output_items[0];
+	//gr_complex *out = (gr_complex *) output_items[0];
 	int count=0;
 	int out_count = 0;
 
@@ -68,11 +70,12 @@ int freq_stitcher_impl::work(int noutput_items,
 				//NOTE: This falls through to next state
 
 			case STATE_RCV:
-				if(cur_data.imag() == -1.0 && cur_data.real() == 0.0){
+				if(cur_data.imag() == -1.0 && (cur_data.real() == -1.0 || cur_data.real() == 0.0)){
 					if(subfreq_idx >= num_freqs)
 						state = STATE_DONE;
 				} else {
-					out[out_count++] = cur_data/cal_data[subfreq_idx++];
+					cur_data = cur_data/cal_data[subfreq_idx++];
+					//out[out_count++] = cur_data/cal_data[subfreq_idx++];
 				}
 				break;
 
@@ -85,7 +88,7 @@ int freq_stitcher_impl::work(int noutput_items,
 		}
 	}   // while
 
-	return out_count;
+	return noutput_items;
 }
 
 } /* namespace fast_square */

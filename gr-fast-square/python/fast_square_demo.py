@@ -88,20 +88,20 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        		channels=range(2),
 	        	),
 	        )
-	        self.source.set_samp_rate(samp_rate)
 
 		#Channel 0
-	        self.source.set_subdev_spec("A:0", 0)
+	        self.source.set_subdev_spec("A:0 B:0")
 	        self.source.set_center_freq(freq, 0)
 	        self.source.set_gain(gain, 0)
 	        self.source.set_antenna(ant, 0)
 	        self.source.set_bandwidth(samp_rate, 0)
 		#Channel 1
-	        self.source.set_subdev_spec("B:0", 1)
 	        self.source.set_center_freq(freq, 1)
 	        self.source.set_gain(gain, 1)
 	        self.source.set_antenna(ant, 1)
 	        self.source.set_bandwidth(samp_rate, 1)
+
+	        self.source.set_samp_rate(samp_rate)
 
 		g = self.source.get_gain_range()
 		print "rx gain range is (%f,%f)" % (g.start(),g.stop())
@@ -133,6 +133,24 @@ class uhd_fft(grc_wxgui.top_block_gui):
         	y_axis_label="Counts",
         )
         self.nb0.GetPage(0).Add(self.scopesink_0.win)
+#        self.scopesink_0 = fftsink2.fft_sink_c(
+#        	self.nb0.GetPage(0).GetWin(),
+#        	baseband_freq=freq,
+#        	y_per_div=10,
+#        	y_divs=15,
+#        	ref_level=0,
+#        	ref_scale=2.0,
+#        	sample_rate=samp_rate,
+#        	fft_size=1024,
+#        	fft_rate=15,
+#        	average=False,
+#        	avg_alpha=None,
+#        	title="FFT Plot",
+#        	peak_hold=False,
+#        	size=((-1, 400)),
+#        )
+#        self.nb0.GetPage(0).Add(self.scopesink_0.win)
+
         self.scopesink_1 = scopesink2.scope_sink_c(
         	self.nb0.GetPage(1).GetWin(),
         	title="Scope Plot",
@@ -196,13 +214,13 @@ class uhd_fft(grc_wxgui.top_block_gui):
         self.multiply_1 = blocks.multiply_vcc(1)
         self.carrier_est = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, 100000, 1, 0)
         self.subcarrier_est = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, 200000, 1, 0)
-        self.carrier_tracking = analog.pll_carriertracking_cc(0.0001, .03, -.03)
+        self.carrier_tracking = analog.pll_carriertracking_cc(0.0001, .1, -.1)
         self.subcarrier_tracking = analog.pll_carriertracking_cc(0.0001, .03, -0.03)
-#	self.stitcher = fast_square.freq_stitcher("cal.dat",14)
-#	if self.test == True:
-#		self.connect(self.source_freqs, self.stitcher)
-#	else:
-#		self.connect((self.source, 1), self.stitcher)
+	self.stitcher = fast_square.freq_stitcher("cal.dat",14*4)
+	if self.test == True:
+		self.connect(self.source_freqs, self.stitcher)
+	else:
+		self.connect((self.source, 1), self.stitcher)
 
 	self.connect((self.source, 0), (self.multiply_0,0))
 	self.connect(self.carrier_est, (self.multiply_0,1))
@@ -213,7 +231,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 
 	self.connect(self.carrier_tracking, self.scopesink_0)
 	self.connect(self.subcarrier_tracking, self.scopesink_1)
-	self.connect(self.source_freqs, self.scopesink_2)
+#	self.connect(self.subcarrier_tracking, self.scopesink_2)
 
 
 # QT sink close method reimplementation
