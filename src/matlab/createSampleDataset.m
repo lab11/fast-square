@@ -9,6 +9,7 @@ time = (0:length(baseband_rx)-1)/sample_rate;
 baseband_rx = zeros(1,num_samples);
 baseband_rx = baseband_rx + 0.25*exp(-1i*time*100e3*2*pi);
 baseband_rx = baseband_rx + 0.25*exp(-1i*time*200e3*2*pi);
+baseband_rx = baseband_rx + 0.01*randn(size(baseband_rx));
 
 stitcher_rx = zeros(1,num_samples);
 for ii=1:filler_len*num_freq_steps:num_samples
