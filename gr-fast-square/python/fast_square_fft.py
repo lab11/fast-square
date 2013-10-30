@@ -27,7 +27,7 @@ import wx
 
 class uhd_fft(grc_wxgui.top_block_gui):
 
-    def __init__(self, param_samp_rate=1e6, param_freq=2.45e9, param_gain=0, address="serial=7R24X9U1"):
+    def __init__(self, param_samp_rate, param_freq, param_gain, address):
         grc_wxgui.top_block_gui.__init__(self, title="UHD FFT")
 
         ##################################################
@@ -295,11 +295,11 @@ if __name__ == '__main__':
     parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
     parser.add_option("-s", "--param-samp-rate", dest="param_samp_rate", type="eng_float", default=eng_notation.num_to_str(1e6),
         help="Set Sample Rate [default=%default]")
-    parser.add_option("-f", "--param-freq", dest="param_freq", type="eng_float", default=eng_notation.num_to_str(2.45e9),
+    parser.add_option("-f", "--param-freq", dest="param_freq", type="eng_float", default=eng_notation.num_to_str(5.8e9),
         help="Set Default Frequency [default=%default]")
     parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(0),
         help="Set Default Gain [default=%default]")
-    parser.add_option("-a", "--address", dest="address", type="string", default="serial=7R24X9U1",
+    parser.add_option("-a", "--address", dest="address", type="string", default="serial=7R24X9U1, fpga=usrp1_fast_square.rbf",
         help="Set IP Address [default=%default]")
     (options, args) = parser.parse_args()
     tb = uhd_fft(param_samp_rate=options.param_samp_rate, param_freq=options.param_freq, param_gain=options.param_gain, address=options.address)
