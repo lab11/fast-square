@@ -335,7 +335,7 @@ if __name__ == '__main__':
         help="Set Default Frequency [default=%default]")
     parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(40),
         help="Set Default Gain [default=%default]")
-    parser.add_option("-a", "--address", dest="address", type="string", default="serial=7R24X9U1, fpga=usrp1_fast_square.rbf",
+    parser.add_option("-a", "--address", dest="address", type="string", default="serial=7R24X9U1, fpga=usrp1_fast_square.rbf, fw=usrp1_fast_square.ihx",
         help="Set IP Address [default=%default]")
     parser.add_option("--test", action="store_true", default=False,
         help="Feed with data from test file")
