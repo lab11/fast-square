@@ -141,16 +141,16 @@ module usrp_std
        .tx_empty(tx_empty),
        .debugbus(tx_debugbus) );
    
- `ifdef TX_EN_0
+/* `ifdef TX_EN_0
    tx_chain tx_chain_0
      ( .clock(clk64),.reset(tx_dsp_reset),.enable(enable_tx),
        .interp_rate(interp_rate),.sample_strobe(tx_sample_strobe),
        .interpolator_strobe(strobe_interp),.freq(),
        .i_in(bb_tx_i0),.q_in(bb_tx_q0),.i_out(i_out_0),.q_out(q_out_0) );
- `else
+ `else*/
    assign      i_out_0=16'd0;
    assign      q_out_0=16'd0;
- `endif
+// `endif
 
  `ifdef TX_EN_1
    tx_chain tx_chain_1
@@ -251,9 +251,9 @@ module usrp_std
    assign      bb_rx_q0=16'd0;
  `endif
 
-   parameter RECORD_TICKS = 15000;
-   parameter RECORD_TICKS_LOG2 = 14;
-	parameter NUM_FREQ_STEPS = 14;
+   parameter RECORD_TICKS = 35000;
+   parameter RECORD_TICKS_LOG2 = 16;
+	parameter NUM_FREQ_STEPS = 37;
    
    wire fast_square_pll_locked;
    assign fast_square_pll_locked = io_rx_b[15];
@@ -262,6 +262,7 @@ module usrp_std
    wire fast_square_rx_record;
 	wire fast_square_rx_reset;
 	wire fast_square_rx_next;
+	wire [3:0] fast_square_debug;
    fast_square_controller #(NUM_FREQ_STEPS,RECORD_TICKS) fsc(
        .clock(clk64),
        .reset(rx_dsp_reset),
@@ -270,10 +271,14 @@ module usrp_std
        .freq_step_out(fast_square_freq_step),
        .rx_reset(fast_square_rx_reset),
        .rx_next(fast_square_rx_next),
-       .rx_record(fast_square_rx_record)
+       .rx_record(fast_square_rx_record),
+		 .debug(fast_square_debug)
    );
    assign FX2_2 = fast_square_freq_step;//OVERRUN
    assign FX2_3 = fast_square_freq_step_reset;//UNDERRUN
+	
+	assign bb_rx_i1 = {fast_square_debug, fast_square_freq_step_reset, fast_square_freq_step, fast_square_rx_reset, fast_square_rx_next, fast_square_rx_record};
+	assign bb_rx_q1 = 16'd0;
 
    fast_square_rx #(`FR_USER_0,`FR_USER_1,RECORD_TICKS_LOG2) fsr(
        .clock(clk64),
@@ -286,8 +291,8 @@ module usrp_std
        .serial_strobe(serial_strobe),
        .i_in(ddc1_in_i),
        .q_in(ddc1_in_q),
-       .i_out(bb_rx_i1),
-       .q_out(bb_rx_q1)
+      // .i_out(bb_rx_i1),
+      // .q_out(bb_rx_q1)
    );
 
  `ifdef RX_EN_2
