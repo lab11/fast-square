@@ -350,7 +350,7 @@ void change2450freq(unsigned char channel, unsigned char reset){
 
   //bandselpll
   mlbuf[0] = 3;
-  if(channel > 17)
+  if(channel > 16)
     mlbuf[1] = 0x92 | (bspll[channel] << 5);
   else
     mlbuf[1] = 0x96 | (bspll[channel] << 5);
