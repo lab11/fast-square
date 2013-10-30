@@ -324,62 +324,49 @@ const unsigned char frac_div_2[8] = {
   ((34406 & 0xfffc) << 2) | 4
 };
 
-const unsigned char bspll_0_1[8] = {
-//  0x82,
-//  0x86,
-//  0x86,
-//  0x86,
-   0x86,
-  0x86,
-   0x86,
-  0x86,
-   0x86,
-  0x86,
-   0x86,
-  0x86
-};
+#define MAX_CHAN 37
 
-const unsigned char bspll_1_1[8] = {
-//  0x8A,
-//  0x8E,
-//  0x8E,
-//  0x8E,
-   0x8E,
-  0x8E,
-   0x8E,
-  0x8E,
-   0x8E,
-  0x8E,
-   0x8E,
-  0x8E
+static xdata unsigned char bspll[MAX_CHAN] = {
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
 
 void write2450reg(const xdata unsigned char *mlbuf){
-  spi_write(0,0,SPI_ENABLE_RX_A,SPI_FMT_MSB | SPI_FMT_HDR_0, mlbuf, 3); 
+  spi_write(0,0,SPI_ENABLE_RX_B,SPI_FMT_MSB | SPI_FMT_HDR_0, mlbuf, 3); 
 }
 
 void change2450freq(unsigned char channel, unsigned char reset){
   static xdata unsigned char mlbuf[3];
   static xdata unsigned char int_div;
   if(reset){
-    //bandselpll
-    mlbuf[0] = 3;
-    mlbuf[1] = 0xF6;
-    mlbuf[2] = 0x35;
-    write2450reg(mlbuf);
     //reg_frac_div
     mlbuf[0] = 0;
     mlbuf[1] = 0;
     mlbuf[2] = 4;
     write2450reg(mlbuf);
   }
-  int_div = 232-channel;
+
+  int_div = 217-channel;
+
+  //bandselpll
+  mlbuf[0] = 3;
+  if(channel > 17)
+    mlbuf[1] = 0x92 | (bspll[channel] << 5);
+  else
+    mlbuf[1] = 0x96 | (bspll[channel] << 5);
+  mlbuf[2] = 0x35;
+  write2450reg(mlbuf);
+
   //reg_int_div
   mlbuf[0] = 0;
   mlbuf[1] = int_div >> 4;
   mlbuf[2] = (int_div << 4) | 3;
   write2450reg(mlbuf);
+}
+
+void increment2450Channel(unsigned char channel){
+	bspll[channel]++;
+	bspll[channel] &= 3;
 }
 
 static xdata unsigned char xbuf2[1];
@@ -393,8 +380,8 @@ write_9862_alt (unsigned char which, unsigned char regno, unsigned char value)
 	     which == 0 ? SPI_ENABLE_CODEC_A : SPI_ENABLE_CODEC_B,
 	     SPI_FMT_MSB | SPI_FMT_HDR_1,
 	     xbuf2, 1);
-}
 
+}
 
 int start_wait = 0;
 #define WAIT_TIME 1500
@@ -421,9 +408,13 @@ main_loop (void)
     cur_rxu = (USRP_PA & bmPA_RX_OVERRUN);
     if (cur_rxu != last_rxu && cur_rxu != 0){
       //g_ping = 0;
-      //Reset if the appropriate line is toggled
-      if(USRP_PA & bmPA_TX_UNDERRUN) ping_idx = 0;
       ping_idx = ping_idx + 1;
+      //Reset if the appropriate line is toggled
+      if(USRP_PA & bmPA_TX_UNDERRUN) {
+	      if(ping_idx < MAX_CHAN) increment2450Channel(ping_idx-1);
+	      ping_idx = 0;
+      }
+      if(ping_idx >= MAX_CHAN-1) ping_idx = MAX_CHAN-1;
 
 //TODO: This shouldn't be needed, correct?
 //      if(ping_idx >= 8) ping_idx = 0;
