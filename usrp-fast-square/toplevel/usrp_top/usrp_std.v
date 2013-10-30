@@ -253,7 +253,7 @@ module usrp_std
 
    parameter RECORD_TICKS = 35000;
    parameter RECORD_TICKS_LOG2 = 16;
-	parameter NUM_FREQ_STEPS = 37;
+	parameter NUM_FREQ_STEPS = 34;
    
    wire fast_square_pll_locked;
    assign fast_square_pll_locked = io_rx_b[15];
@@ -277,8 +277,8 @@ module usrp_std
    assign FX2_2 = fast_square_freq_step;//OVERRUN
    assign FX2_3 = fast_square_freq_step_reset;//UNDERRUN
 	
-	assign bb_rx_i1 = {fast_square_debug, fast_square_freq_step_reset, fast_square_freq_step, fast_square_rx_reset, fast_square_rx_next, fast_square_rx_record};
-	assign bb_rx_q1 = 16'd0;
+	//assign bb_rx_i1 = {fast_square_debug, fast_square_freq_step_reset, fast_square_freq_step, fast_square_rx_reset, fast_square_rx_next, fast_square_rx_record};
+	//assign bb_rx_q1 = 16'd0;
 
    fast_square_rx #(`FR_USER_0,`FR_USER_1,RECORD_TICKS_LOG2) fsr(
        .clock(clk64),
@@ -291,8 +291,8 @@ module usrp_std
        .serial_strobe(serial_strobe),
        .i_in(ddc1_in_i),
        .q_in(ddc1_in_q),
-      // .i_out(bb_rx_i1),
-      // .q_out(bb_rx_q1)
+       .i_out(bb_rx_i1),
+       .q_out(bb_rx_q1)
    );
 
  `ifdef RX_EN_2
