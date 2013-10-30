@@ -21,13 +21,13 @@
 
 // ------------------------------------------------------------
 // If TX_ON is not defined, there is *no* transmit circuitry built
-//  `define TX_ON
+  `define TX_ON
 
 // ------------------------------------------------------------
 // Define 1 and only one of TX_SINGLE, TX_DUAL and TX_QUAD
 // to respectively enable 1, 2 or 4 transmit channels.
 // [Please note that only TX_SINGLE and TX_DUAL are currently valid]
-//`define TX_SINGLE
+`define TX_SINGLE
 //  `define TX_DUAL
 //`define TX_QUAD
 

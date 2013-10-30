@@ -56,7 +56,7 @@ module rx_chain_submod
      if(reset)
        phase <= #1 32'b0;
      else
-       phase <= #1 phase + 32'd261724569;
+       phase <= #1 phase - 32'd241591910;
    end
 
    cordic rx_cordic
