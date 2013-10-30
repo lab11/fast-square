@@ -324,7 +324,7 @@ const unsigned char frac_div_2[8] = {
   ((34406 & 0xfffc) << 2) | 4
 };
 
-#define MAX_CHAN 37
+#define MAX_CHAN 34
 
 static xdata unsigned char bspll[MAX_CHAN] = {
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
