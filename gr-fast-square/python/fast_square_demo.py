@@ -38,6 +38,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
         ##################################################
         # Parameters
         ##################################################
+	param_freq = 5.78666666667e9
         self.param_samp_rate = param_samp_rate
         self.param_freq = param_freq
         self.param_gain = param_gain
@@ -100,7 +101,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        self.source.set_center_freq(freq, 1)
 	        self.source.set_gain(gain, 1)
 	        self.source.set_antenna(ant, 1)
-	        self.source.set_bandwidth(samp_rate, 1)
+	        self.source.set_bandwidth(36e6, 1)#Need Turbo mode!
 
 	        self.source.set_samp_rate(samp_rate)
 
@@ -136,7 +137,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 #        self.nb0.GetPage(0).Add(self.scopesink_0.win)
         self.scopesink_0 = fftsink2.fft_sink_c(
         	self.nb0.GetPage(0).GetWin(),
-        	baseband_freq=freq,
+        	baseband_freq=0,
         	y_per_div=10,
         	y_divs=15,
         	ref_level=0,
@@ -192,10 +193,10 @@ class uhd_fft(grc_wxgui.top_block_gui):
         self.subcarrier_est = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, -300000, 1, 0)
 	chan_coeffs = filter.firdes.low_pass(1.0, 1.0, 0.05, 0.05, filter.firdes.WIN_HANN)
 	self.carrier_tracking_filter = filter.fft_filter_ccc(1, chan_coeffs)
-        self.carrier_tracking = analog.pll_refout_cc(0.0005, .1, -.1)
+        self.carrier_tracking = analog.pll_refout_cc(0.0003, .1, -.1)
 	self.carrier_tracking_conj = blocks.conjugate_cc()
 	self.subcarrier_tracking_filter = filter.fft_filter_ccc(1, chan_coeffs)
-        self.subcarrier_tracking = analog.pll_carriertracking_cc(0.0001, .03, -0.03)
+        self.subcarrier_tracking = analog.pll_carriertracking_cc(0.000005, .001, -0.001)
 	self.stitcher = fast_square.freq_stitcher("cal.dat",14*4)
 
 
@@ -222,7 +223,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
         def _freq_tracker():
         	while True:
 			carrier_freq = self.carrier_tracking.get_frequency()
-			carrier_reg = -carrier_freq/2/math.pi*self.samp_rate/64e6
+			carrier_reg = (100e3-carrier_freq/2/math.pi*self.samp_rate)/64e6
 			if carrier_reg < 0:
 				carrier_reg = carrier_reg + 1.0
 			carrier_reg = int(carrier_reg*(2**32))
@@ -230,14 +231,17 @@ class uhd_fft(grc_wxgui.top_block_gui):
 				self.source.set_user_register(64+0,carrier_reg)    #Write to FR_USER_0 (Carrier offset reg)
 
 			subcarrier_freq = self.subcarrier_tracking.get_frequency()
-			subcarrier_reg = -subcarrier_freq/2/math.pi*self.samp_rate/64e6
-			if subcarrier_reg < 0:
-				subcarrier_reg = subcarrier_reg + 1.0
+			subcarrier_reg = (4e6+subcarrier_freq/2/math.pi*self.samp_rate)/64e6 #Subcarrier freq register is absolute freq, not error
 			subcarrier_reg = int(subcarrier_reg*(2**32))
 			if self.test == False:
 				self.source.set_user_register(64+1,subcarrier_reg) #Write to FR_USER_1 (Subcarrier freq reg)
 
-			print "carrier_freq = %f, \t subcarrier_freq = %f, \t carrier_reg = %d, \t subcarrier_reg = %d" % (carrier_freq, subcarrier_freq, carrier_reg, subcarrier_reg)
+			freqshift_reg = (26.666666e6-6*(4e6+subcarrier_freq/2/math.pi*self.samp_rate))/64e6;
+			freqshift_reg = int(freqshift_reg*(2**32))
+			if self.test == False:
+				self.source.set_user_register(64+2,freqshift_reg)
+
+			print "carrier_freq = %f, \t subcarrier_freq = %f, \t carrier_reg = %d, \t subcarrier_reg = %d, \t freqshift_reg = %d" % (carrier_freq, subcarrier_freq, carrier_reg, subcarrier_reg, freqshift_reg)
 
         		time.sleep(1.0/(10))
 
