@@ -58,9 +58,6 @@ unsigned char g_rx_enable = 0;
 unsigned char g_rx_overrun = 0;
 unsigned char g_tx_underrun = 0;
 
-unsigned char g_ping = 0;
-xdata unsigned char temp_char[3];
-
 /*
  * the host side fpga loader code pushes an MD5 hash of the bitstream
  * into hash1.
@@ -204,23 +201,8 @@ app_vendor_cmd (void)
 
     case VRQ_SPI_WRITE:
       get_ep0_data ();
-
-      //Hack to get the 9862s to be configured correctly (just intercept the message in-transit)
-      if(wIndexH & SPI_ENABLE_CODEC_B){
-        if(wValueL == 1) temp_char[0] = 0;
-	if(wValueL == 2) temp_char[0] = 0;
-	if(wValueL == 3) temp_char[0] = 0;
-	if(wValueL == 4) temp_char[0] = 5;
-	if(wValueL == 18) temp_char[0] = 0x4b;
-	if(wValueL == 19) temp_char[0] = 0x11;
-	if(wValueL == 20) temp_char[0] = 0;
-	if (!spi_write (wValueH, wValueL, wIndexH, wIndexL, temp_char, 1))
-	  return 0;
-      }
-      else {
-	if (!spi_write (wValueH, wValueL, wIndexH, wIndexL, EP0BUF, EP0BCL))
-	  return 0;
-      }
+      if (!spi_write (wValueH, wValueL, wIndexH, wIndexL, EP0BUF, EP0BCL))
+	return 0;
       break;
 
     default:
@@ -234,231 +216,14 @@ app_vendor_cmd (void)
   return 1;
 }
 
-const unsigned char int_div_0[8] = {
-//  (47513 & 3),
-//  (8192 & 3),
-//  (34406 & 3),
-//  (60620 & 3),
-   (8192 & 3),
-  (21299 & 3),
-   (34406 & 3),
-  (47513 & 3),
-   (60620 & 3),
-  (8192 & 3),
-   (21299 & 3),
-  (34406 & 3)
-};
-
-const unsigned char int_div_1[8] = {
-//  (202 >> 4),
-//  (205 >> 4),
-//  (207 >> 4),
-//  (209 >> 4),
-   (211 >> 4),
-  (212 >> 4),
-   (213 >> 4),
-  (214 >> 4),
-   (215 >> 4),
-  (217 >> 4),
-   (218 >> 4),
-  (219 >> 4)
-};
-
-const unsigned char int_div_2[8] = {
-//  (202 << 4) | 3,
-//  (205 << 4) | 3,
-//  (207 << 4) | 3,
-//  (209 << 4) | 3,
-   (211 << 4) | 3,
-  (212 << 4) | 3,
-   (213 << 4) | 3,
-  (214 << 4) | 3,
-   (215 << 4) | 3,
-  (217 << 4) | 3,
-   (218 << 4) | 3,
-  (219 << 4) | 3
-};
-
-const unsigned char frac_div_0[8] = {
-//  (47513 & 0xfffc) >> 14,
-//  (8192 & 0xfffc) >> 14,
-//  (34406 & 0xfffc) >> 14,
-//  (60620 & 0xfffc) >> 14,
-   (8192 & 0xfffc) >> 14,
-  (21299 & 0xfffc) >> 14,
-   (34406 & 0xfffc) >> 14,
-  (47513 & 0xfffc) >> 14,
-   (60620 & 0xfffc) >> 14,
-  (8192 & 0xfffc) >> 14,
-   (21299 & 0xfffc) >> 14,
-  (34406 & 0xfffc) >> 14
-};
-
-const unsigned char frac_div_1[8] = {
-//  (47513 & 0xfffc) >> 6,
-//  (8192 & 0xfffc) >> 6,
-//  (34406 & 0xfffc) >> 6,
-//  (60620 & 0xfffc) >> 6,
-   (8192 & 0xfffc) >> 6,
-  (21299 & 0xfffc) >> 6,
-   (34406 & 0xfffc) >> 6,
-  (47513 & 0xfffc) >> 6,
-   (60620 & 0xfffc) >> 6,
-  (8192 & 0xfffc) >> 6,
-   (21299 & 0xfffc) >> 6,
-  (34406 & 0xfffc) >> 6
-};
-
-const unsigned char frac_div_2[8] = {
-//  ((47513 & 0xfffc) << 2) | 4,
-//  ((8192 & 0xfffc) << 2) | 4,
-//  ((34406 & 0xfffc) << 2) | 4,
-//  ((60620 & 0xfffc) << 2) | 4,
-   ((8192 & 0xfffc) << 2) | 4,
-  ((21299 & 0xfffc) << 2) | 4,
-   ((34406 & 0xfffc) << 2) | 4,
-  ((47513 & 0xfffc) << 2) | 4,
-   ((60620 & 0xfffc) << 2) | 4,
-  ((8192 & 0xfffc) << 2) | 4,
-   ((21299 & 0xfffc) << 2) | 4,
-  ((34406 & 0xfffc) << 2) | 4
-};
-
-#define MAX_CHAN 34
-
-static xdata unsigned char bspll[MAX_CHAN] = {
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-};
 
 
-void write2450reg(const xdata unsigned char *mlbuf){
-  spi_write(0,0,SPI_ENABLE_RX_B,SPI_FMT_MSB | SPI_FMT_HDR_0, mlbuf, 3); 
-}
-
-void change2450freq(unsigned char channel, unsigned char reset){
-  static xdata unsigned char mlbuf[3];
-  static xdata unsigned char int_div;
-  if(reset){
-    //reg_frac_div
-    mlbuf[0] = 0;
-    mlbuf[1] = 0;
-    mlbuf[2] = 4;
-    write2450reg(mlbuf);
-  }
-
-  int_div = 217-channel;
-
-  //bandselpll
-  mlbuf[0] = 3;
-  if(channel > 16)
-    mlbuf[1] = 0x92 | (bspll[channel] << 5);
-  else
-    mlbuf[1] = 0x96 | (bspll[channel] << 5);
-  mlbuf[2] = 0x35;
-  write2450reg(mlbuf);
-
-  //reg_int_div
-  mlbuf[0] = 0;
-  mlbuf[1] = int_div >> 4;
-  mlbuf[2] = (int_div << 4) | 3;
-  write2450reg(mlbuf);
-}
-
-void increment2450Channel(unsigned char channel){
-	bspll[channel]++;
-	bspll[channel] &= 3;
-}
-
-static xdata unsigned char xbuf2[1];
-
-void
-write_9862_alt (unsigned char which, unsigned char regno, unsigned char value)
-{
-  xbuf2[0] = value;
-  
-  spi_write (0, regno & 0x3f,
-	     which == 0 ? SPI_ENABLE_CODEC_A : SPI_ENABLE_CODEC_B,
-	     SPI_FMT_MSB | SPI_FMT_HDR_1,
-	     xbuf2, 1);
-
-}
-
-int start_wait = 0;
-#define WAIT_TIME 1500
 static void
 main_loop (void)
 {
-  static unsigned char ping_idx = 0;
-  static unsigned char last_rxu = 0;
-  unsigned char cur_rxu = 0;
   setup_flowstate_common ();
 
   while (1){
-//    if(start_wait == 1500){
-//      write_9862_alt(0, 1, 0);
-//      write_9862_alt(0, 2, 0);
-//      write_9862_alt(0, 3, 0);
-//      write_9862_alt(0, 4, 5);
-//      write_9862_alt(0, 16, 255);
-//      write_9862_alt(0, 20, 0);
-//      start_wait++;
-//    }
-
-    //State chagne of the incr line
-    cur_rxu = (USRP_PA & bmPA_RX_OVERRUN);
-    if (cur_rxu != last_rxu && cur_rxu != 0){
-      //g_ping = 0;
-      ping_idx = ping_idx + 1;
-      //Reset if the appropriate line is toggled
-      if(USRP_PA & bmPA_TX_UNDERRUN) {
-	      if(ping_idx < MAX_CHAN) increment2450Channel(ping_idx-1);
-	      ping_idx = 0;
-      }
-      if(ping_idx >= MAX_CHAN-1) ping_idx = MAX_CHAN-1;
-
-//TODO: This shouldn't be needed, correct?
-//      if(ping_idx >= 8) ping_idx = 0;
-
-//      //Start PLL
-//      mlbuf[0] = 3;
-//      mlbuf[1] = 0xF6;//bspll_1_1[ping_idx];
-//      mlbuf[2] = 0x35;
-//      write2450reg(mlbuf);
-      change2450freq(ping_idx, ping_idx==0);
-/*      udelay(2000);
-      //reg_int_div
-      mlbuf[0] = int_div_0[0];
-      mlbuf[1] = int_div_1[0];
-      mlbuf[2] = int_div_2[0];
-      write2450reg(mlbuf);
-      //reg_frac_div
-      mlbuf[0] = frac_div_0[0];
-      mlbuf[1] = frac_div_1[0];
-      mlbuf[2] = frac_div_2[0];
-      write2450reg(mlbuf);
-
-      //reg_int_div
-      mlbuf[0] = 0;
-      mlbuf[1] = 217 >> 4;
-      mlbuf[2] = (217 << 4) | 3;
-      write2450reg(mlbuf);
-      //reg_frac_div
-      mlbuf[0] = (32768 >> 14);
-      mlbuf[1] = 0;
-      mlbuf[2] = 4;
-      write2450reg(mlbuf);
-      //bandselpll
-      mlbuf[0] = 3;
-      mlbuf[1] = 0x86;
-      mlbuf[2] = 0x35;
-      write2450reg(mlbuf);
-      mlbuf[1] = 0x8E;
-      write2450reg(mlbuf);*/
-    }
-//    else if(cur_rxu != last_rxu){
-//      change2450freq(0);
-//    }
-    last_rxu = cur_rxu;//USRP_PA & bmPA_RX_OVERRUN;
 
     if (usb_setup_packet_avail ())
       usb_handle_setup_packet ();
@@ -470,7 +235,7 @@ main_loop (void)
 
       // First check for underruns and overruns
 
-/*      if (UC_BOARD_HAS_FPGA && (USRP_PA & (bmPA_TX_UNDERRUN | bmPA_RX_OVERRUN))){
+      if (UC_BOARD_HAS_FPGA && (USRP_PA & (bmPA_TX_UNDERRUN | bmPA_RX_OVERRUN))){
       
 	// record the under/over run
 	if (USRP_PA & bmPA_TX_UNDERRUN)
@@ -481,7 +246,7 @@ main_loop (void)
 
 	// tell the FPGA to clear the flags
 	fpga_clear_flags ();
-      }*/
+      }
 
       // Next see if there are any "OUT" packets waiting for our attention,
       // and if so, if there's room in the FPGA's FIFO for them.
@@ -543,12 +308,10 @@ void
 isr_tick (void) interrupt
 {
   static unsigned char	count = 1;
-  if(start_wait < WAIT_TIME) start_wait++;
   
   if (--count == 0){
-    count = 10;
+    count = 50;
     USRP_LED_REG ^= bmLED0;
-    g_ping = 1;
   }
 
   clear_timer_irq ();

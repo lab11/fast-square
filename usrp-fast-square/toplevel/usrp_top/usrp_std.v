@@ -81,8 +81,8 @@ module usrp_std
 
    wire   tx_underrun, rx_overrun;    
    wire   clear_status = FX2_1;
-   //assign FX2_2 = rx_overrun;
-   //assign FX2_3 = tx_underrun;
+   assign FX2_2 = rx_overrun;
+   assign FX2_3 = tx_underrun;
       
    wire [15:0] usbdata_out;
    
@@ -253,29 +253,28 @@ module usrp_std
 
    parameter RECORD_TICKS = 35000;
    parameter RECORD_TICKS_LOG2 = 16;
-	parameter NUM_FREQ_STEPS = 34;
+	parameter NUM_FREQ_STEPS = 32;
    
-   wire fast_square_pll_locked;
-   assign fast_square_pll_locked = io_rx_b[15];
    wire fast_square_freq_step_reset;
    wire fast_square_freq_step;
    wire fast_square_rx_record;
-	wire fast_square_rx_reset;
-	wire fast_square_rx_next;
-	wire [3:0] fast_square_debug;
+   wire fast_square_rx_reset;
+   wire fast_square_rx_next;
+   wire [3:0] fast_square_debug;
    fast_square_controller #(NUM_FREQ_STEPS,RECORD_TICKS) fsc(
        .clock(clk64),
        .reset(rx_dsp_reset),
-       .pll_locked(fast_square_pll_locked),
-       .freq_step_reset_out(fast_square_freq_step_reset),
+       .freq_step_reset_in(fast_square_freq_step_reset),
        .freq_step_out(fast_square_freq_step),
        .rx_reset(fast_square_rx_reset),
        .rx_next(fast_square_rx_next),
        .rx_record(fast_square_rx_record),
-		 .debug(fast_square_debug)
+       .debug(fast_square_debug)
    );
-   assign FX2_2 = fast_square_freq_step;//OVERRUN
-   assign FX2_3 = fast_square_freq_step_reset;//UNDERRUN
+   assign io_tx_a[0] = fast_square_freq_step;
+   debounce db0(.clk(clk64), .in(io_tx_a[1]), .out(fast_square_freq_step_reset));
+   //assign FX2_2 = fast_square_freq_step;//OVERRUN
+   //assign FX2_3 = fast_square_freq_step_reset;//UNDERRUN
 	
 	//assign bb_rx_i1 = {fast_square_debug, fast_square_freq_step_reset, fast_square_freq_step, fast_square_rx_reset, fast_square_rx_next, fast_square_rx_record};
 	//assign bb_rx_q1 = 16'd0;
@@ -353,8 +352,9 @@ module usrp_std
        .debug_2(rx_debugbus[15:0]),.debug_3(rx_debugbus[31:16]),
        .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3) );
    
+   wire [15:0] unused_io_tx_a;
    io_pins io_pins
-     (.io_0(io_tx_a),.io_1(io_rx_a),.io_2(io_tx_b),.io_3(io_rx_b),
+     (.io_0({io_tx_a[15:2],unused_io_tx_a[1:0]}),.io_1(io_rx_a),.io_2(io_tx_b),.io_3(io_rx_b),
       .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3),
       .clock(clk64),.rx_reset(rx_dsp_reset),.tx_reset(tx_dsp_reset),
       .serial_addr(serial_addr),.serial_data(serial_data),.serial_strobe(serial_strobe));
