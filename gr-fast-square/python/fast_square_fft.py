@@ -33,6 +33,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
         ##################################################
         # Parameters
         ##################################################
+	param_freq = 5.78666666667e9
         self.param_samp_rate = param_samp_rate
         self.param_freq = param_freq
         self.param_gain = param_gain
@@ -176,7 +177,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
         self.GridAdd(self._lo_locked_probe_static_text, 1, 7, 1, 1)
         self.fft = fftsink2.fft_sink_c(
         	self.nb0.GetPage(0).GetWin(),
-        	baseband_freq=freq,
+        	baseband_freq=0,
         	y_per_div=10,
         	y_divs=15,
         	ref_level=0,
@@ -278,7 +279,6 @@ class uhd_fft(grc_wxgui.top_block_gui):
 
     def set_freq(self, freq):
         self.freq = freq
-        self.fft.set_baseband_freq(self.freq)
         self._freq_slider.set_value(self.freq)
         self._freq_text_box.set_value(self.freq)
         self.uhd_usrp_source_0.set_center_freq(self.freq, 0)
@@ -299,7 +299,7 @@ if __name__ == '__main__':
         help="Set Default Frequency [default=%default]")
     parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(0),
         help="Set Default Gain [default=%default]")
-    parser.add_option("-a", "--address", dest="address", type="string", default="serial=7R24X9U1, fpga=usrp1_fast_square.rbf",
+    parser.add_option("-a", "--address", dest="address", type="string", default="serial=7R24X9U1",#, fpga=usrp1_fast_square.rbf",
         help="Set IP Address [default=%default]")
     (options, args) = parser.parse_args()
     tb = uhd_fft(param_samp_rate=options.param_samp_rate, param_freq=options.param_freq, param_gain=options.param_gain, address=options.address)
