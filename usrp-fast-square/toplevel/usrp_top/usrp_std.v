@@ -271,8 +271,8 @@ module usrp_std
        .rx_record(fast_square_rx_record),
        .debug(fast_square_debug)
    );
-   assign io_tx_a[0] = fast_square_freq_step;
-   debounce db0(.clk(clk64), .in(io_tx_a[1]), .out(fast_square_freq_step_reset));
+   assign io_tx_b[0] = fast_square_freq_step;
+   debounce db0(.clk(clk64), .in(io_tx_b[1]), .out(fast_square_freq_step_reset));
    //assign FX2_2 = fast_square_freq_step;//OVERRUN
    //assign FX2_3 = fast_square_freq_step_reset;//UNDERRUN
 	
@@ -352,9 +352,9 @@ module usrp_std
        .debug_2(rx_debugbus[15:0]),.debug_3(rx_debugbus[31:16]),
        .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3) );
    
-   wire [15:0] unused_io_tx_a;
+   wire [15:0] unused_io_tx_b;
    io_pins io_pins
-     (.io_0({io_tx_a[15:2],unused_io_tx_a[1:0]}),.io_1(io_rx_a),.io_2(io_tx_b),.io_3(io_rx_b),
+     (.io_0(io_tx_a),.io_1(io_rx_a),.io_2({io_tx_b[15:2],unused_io_tx_b[1:0]}),.io_3(io_rx_b),
       .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3),
       .clock(clk64),.rx_reset(rx_dsp_reset),.tx_reset(tx_dsp_reset),
       .serial_addr(serial_addr),.serial_data(serial_data),.serial_strobe(serial_strobe));

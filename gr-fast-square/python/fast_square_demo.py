@@ -90,6 +90,9 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        	),
 	        )
 
+		g = self.source.get_gain_range()
+		print "rx gain range is (%f,%f)" % (g.start(),g.stop())
+
 		#Channel 0
 	        self.source.set_subdev_spec("A:0 B:0")
 	        self.source.set_center_freq(freq, 0)
@@ -97,15 +100,13 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        self.source.set_antenna(ant, 0)
 	        self.source.set_bandwidth(samp_rate, 0)
 		#Channel 1
-	        self.source.set_center_freq(freq, 1)
-	        self.source.set_gain(gain, 1)
-	        self.source.set_antenna(ant, 1)
-	        self.source.set_bandwidth(samp_rate, 1)
+	        self.source.set_center_freq(808e6, 1) #Mixer @ 4992 MHz
+	        self.source.set_gain(g.stop(), 1)
+	        #self.source.set_antenna(ant, 1)
+	        self.source.set_bandwidth(32e6, 1)
 
 	        self.source.set_samp_rate(samp_rate)
 
-		g = self.source.get_gain_range()
-		print "rx gain range is (%f,%f)" % (g.start(),g.stop())
 	else:
 		self.source_pre = blocks.file_source(gr.sizeof_gr_complex, "test.dat", True)
 		self.source = blocks.throttle(gr.sizeof_gr_complex*1, samp_rate)
@@ -221,6 +222,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 
         def _freq_tracker():
         	while True:
+			#TODO: Is this whole calculation section correct?
 			carrier_freq = self.carrier_tracking.get_frequency()
 			carrier_reg = -carrier_freq/2/math.pi*self.samp_rate/64e6
 			if carrier_reg < 0:
