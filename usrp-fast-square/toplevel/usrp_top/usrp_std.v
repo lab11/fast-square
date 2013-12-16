@@ -280,12 +280,12 @@ module usrp_std
 	//assign bb_rx_i1 = {fast_square_debug, fast_square_freq_step_reset, fast_square_freq_step, fast_square_rx_reset, fast_square_rx_next, fast_square_rx_record};
 	//assign bb_rx_q1 = 16'd0;
 
-   fast_square_rx #(`FR_USER_0,`FR_USER_1,RECORD_TICKS_LOG2) fsr(
+   fast_square_rx #(`FR_USER_0,`FR_USER_1,`FR_USER_2,RECORD_TICKS_LOG2) fsr(
        .clock(clk64),
        .reset(fast_square_rx_reset),
        .freq_step(fast_square_rx_next),
        .record(fast_square_rx_record),
-       .data_out_strobe(strobe_decim),
+       .data_out_strobe(hb_strobe),
        .serial_addr(serial_addr),
        .serial_data(serial_data),
        .serial_strobe(serial_strobe),

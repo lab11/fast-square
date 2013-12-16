@@ -88,10 +88,10 @@ case(state)
 
 	`STATE_WAIT: begin
 		state_wait_incr = 1'b1;
-		if(pll_locked_db == 1'b1 && state_wait_ctr > 20'd3200) begin
+		if(pll_locked_db == 1'b1 && state_wait_ctr > 20'd4000) begin
 			freq_step_count_incr = 1'b1;
 			next_state = `STATE_RECORD;
-		end else if(pll_locked_db == 1'b0 && state_wait_ctr > 20'd3200) begin
+		end else if(pll_locked_db == 1'b0 && state_wait_ctr > 20'd4000) begin
 			next_state = `STATE_INCR_SUB_BAND;
 		end
 	end
