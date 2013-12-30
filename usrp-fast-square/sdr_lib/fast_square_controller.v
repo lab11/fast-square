@@ -91,7 +91,7 @@ case(state)
 	`STATE_RECORD: begin
 		rx_record = 1'b1;
 		if(record_count == RECORD_TICKS) begin
-			if(freq_step_count == NUM_FREQ_STEPS)
+			if(freq_step_count == NUM_FREQ_STEPS+1)
 				next_state = `STATE_RESET;
 			else begin
 				rx_next = 1'b1;
