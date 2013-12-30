@@ -38,11 +38,16 @@ class uhd_fft(grc_wxgui.top_block_gui):
         ##################################################
         # Parameters
         ##################################################
-	param_freq = 5.78666666667e9
+	param_freq = 5.8e9
+	self.if_freq = 960e6
+	self.square_freq = 4e6
+	self.num_steps = 32
+	self.lo_start_freq = 5.792e9
         self.param_samp_rate = param_samp_rate
         self.param_freq = param_freq
         self.param_gain = param_gain
         self.address = address
+
 
         ##################################################
         # Variables
@@ -101,7 +106,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        self.source.set_antenna(ant, 0)
 	        self.source.set_bandwidth(samp_rate, 0)
 		#Channel 1
-	        self.source.set_center_freq(808e6, 1) #Mixer @ 4992 MHz
+	        self.source.set_center_freq(self.if_freq, 1) #Mixer @ 4992 MHz
 	        self.source.set_gain(g.stop(), 1)
 	        #self.source.set_antenna(ant, 1)
 	        self.source.set_bandwidth(36e6, 1)#Need Turbo mode!
@@ -224,27 +229,34 @@ class uhd_fft(grc_wxgui.top_block_gui):
         def _freq_tracker():
         	while True:
 			#TODO: Is this whole calculation section correct?
-			carrier_freq = self.carrier_tracking.get_frequency()
-			subcarrier_freq = self.subcarrier_tracking.get_frequency()
+			carrier_freq = self.carrier_tracking.get_frequency()/2/math.pi*self.samp_rate
+			subcarrier_freq = self.subcarrier_tracking.get_frequency()/2/math.pi*self.samp_rate
 
-			carrier_reg = (100e3-carrier_freq/2/math.pi*self.samp_rate-64*subcarrier_freq/2/math.pi*self.samp_rate)/64e6
+			#Translate to absolute frequency
+			carrier_freq = self.param_freq+carrier_freq-100e3
+			subcarrier_freq = self.square_freq+subcarrier_freq
+
+			#Figure out what harmonic we will be centered on
+			next_harmonic = math.ceil(((self.lo_start_freq+self.if_freq)-(self.param_freq+self.square_freq))/self.square_freq/2)
+			next_harmonic_freq = self.param_freq + self.square_freq + next_harmonic*self.square_freq*2
+			target_freq = next_harmonic_freq - self.square_freq
+			actual_freq = carrier_freq+next_harmonic*subcarrier_freq*2
+			carrier_mixer_freq = -(actual_freq-target_freq)
+			subcarrier_mixer_freq = subcarrier_freq
+
+			carrier_reg = carrier_mixer_freq/64e6
 			if carrier_reg < 0:
 				carrier_reg = carrier_reg + 1.0
 			carrier_reg = int(carrier_reg*(2**32))
 			if self.test == False:
 				self.source.set_user_register(64+0,carrier_reg)    #Write to FR_USER_0 (Carrier offset reg)
 
-			subcarrier_reg = (4e6+subcarrier_freq/2/math.pi*self.samp_rate)/64e6 #Subcarrier freq register is absolute freq, not error
+			subcarrier_reg = subcarrier_mixer_freq/64e6 #Subcarrier freq register is absolute freq, not error
 			subcarrier_reg = int(subcarrier_reg*(2**32))
 			if self.test == False:
 				self.source.set_user_register(64+1,subcarrier_reg) #Write to FR_USER_1 (Subcarrier freq reg)
 
-			freqshift_reg = (26.666666e6-6*(4e6+subcarrier_freq/2/math.pi*self.samp_rate))/64e6;
-			freqshift_reg = int(freqshift_reg*(2**32))
-			if self.test == False:
-				self.source.set_user_register(64+2,freqshift_reg)
-
-			print "carrier_freq = %f, \t subcarrier_freq = %f, \t carrier_reg = %d, \t subcarrier_reg = %d, \t freqshift_reg = %d" % (carrier_freq, subcarrier_freq, carrier_reg, subcarrier_reg, freqshift_reg)
+			print "carrier_freq = %f, \t subcarrier_freq = %f, \t carrier_reg = %d, \t subcarrier_reg = %d" % (carrier_freq, subcarrier_freq, carrier_reg, subcarrier_reg)
 
         		time.sleep(1.0/(10))
 

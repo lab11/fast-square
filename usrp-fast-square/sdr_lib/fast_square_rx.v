@@ -42,11 +42,10 @@ parameter SUM_HI = 31-(16-RECORD_TICKS_LOG2);
 parameter SUM_LO = SUM_HI-15;
 
 //Phase accumulator for carrier offset
-wire signed [31:0] carrier_freq_set, subcarrier_freq_set, freqshift_set;
+wire signed [31:0] carrier_freq_set, subcarrier_freq_set;
 reg signed [31:0] carrier_freq_latched;
 setting_reg #(CARRIERFREQADDR) sr_rxfreq0(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(carrier_freq_set));
 setting_reg #(SUBCARRIERFREQADDR) sr_rxfreq1(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(subcarrier_freq_set));
-setting_reg #(FREQSHIFTADDR) sr_rxfreq2(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(freqshift_set));
 
 reg [31:0] carrier_phase;
 reg [31:0] subcarrier_phase [NUM_SUBCARRIERS-1:0];
@@ -93,7 +92,7 @@ always @(posedge clock) begin
 		subcarrier_freq[2] <= #1 subcarrier_freq_set;
 		subcarrier_freq[3] <= #1 (subcarrier_freq_set << 1) + subcarrier_freq_set;
 	
-		freq_step_small <= #1 32'd2147483648 - (subcarrier_freq_set << 2) - (subcarrier_freq_set << 1);//freqshift_set - 
+		freq_step_small <= #1 32'd2147483648 - (subcarrier_freq_set << 2) - (subcarrier_freq_set << 1);
 		freq_step_large <= #1 32'd2147483648 - (subcarrier_freq_set << 3);
 	
 		restart_data <= #1 1'b1;
