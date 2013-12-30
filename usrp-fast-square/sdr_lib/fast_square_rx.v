@@ -131,10 +131,10 @@ always @(posedge clock) begin
 				new_data_ctr <= #1 0;
 				time_since_last_record_latched <= #1 time_since_last_record;
 				for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
-				subcarrier_sum_i_latched[ii] <= #1 subcarrier_sum_i[ii];
-				subcarrier_sum_q_latched[ii] <= #1 subcarrier_sum_q[ii];
-				subcarrier_sum_i[ii] <= #1 0;
-				subcarrier_sum_q[ii] <= #1 0;
+					subcarrier_sum_i_latched[ii] <= #1 subcarrier_sum_i[ii];
+					subcarrier_sum_q_latched[ii] <= #1 subcarrier_sum_q[ii];
+					subcarrier_sum_i[ii] <= #1 0;
+					subcarrier_sum_q[ii] <= #1 0;
 				end
 			end else if(record) begin
 				for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
@@ -159,7 +159,7 @@ assign i_out = (restart_data) ? 16'h8000 :
 (new_data && new_data_ctr < NUM_SUBCARRIERS*2) ? subcarrier_sum_q_latched[new_data_ctr[1:0]][31:16] :
 (new_data) ? time_since_last_record_latched : 16'h8000;
 assign q_out = (restart_data) ? 16'h8000 : 
-(new_data && new_data_ctr < NUM_SUBCARRIERS) ? subcarrier_sum_i_latched[new_data_ctr][15:0] : 
+(new_data && new_data_ctr < NUM_SUBCARRIERS) ? subcarrier_sum_i_latched[new_data_ctr[1:0]][15:0] : 
 (new_data && new_data_ctr < NUM_SUBCARRIERS*2) ? subcarrier_sum_q_latched[new_data_ctr[1:0]][15:0] : 16'h0000;
 
 endmodule
