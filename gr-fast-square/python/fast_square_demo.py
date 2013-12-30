@@ -225,14 +225,15 @@ class uhd_fft(grc_wxgui.top_block_gui):
         	while True:
 			#TODO: Is this whole calculation section correct?
 			carrier_freq = self.carrier_tracking.get_frequency()
-			carrier_reg = (100e3-carrier_freq/2/math.pi*self.samp_rate)/64e6
+			subcarrier_freq = self.subcarrier_tracking.get_frequency()
+
+			carrier_reg = (100e3-carrier_freq/2/math.pi*self.samp_rate-64*subcarrier_freq/2/math.pi*self.samp_rate)/64e6
 			if carrier_reg < 0:
 				carrier_reg = carrier_reg + 1.0
 			carrier_reg = int(carrier_reg*(2**32))
 			if self.test == False:
 				self.source.set_user_register(64+0,carrier_reg)    #Write to FR_USER_0 (Carrier offset reg)
 
-			subcarrier_freq = self.subcarrier_tracking.get_frequency()
 			subcarrier_reg = (4e6+subcarrier_freq/2/math.pi*self.samp_rate)/64e6 #Subcarrier freq register is absolute freq, not error
 			subcarrier_reg = int(subcarrier_reg*(2**32))
 			if self.test == False:
@@ -341,7 +342,7 @@ if __name__ == '__main__':
         help="Set Default Frequency [default=%default]")
     parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(40),
         help="Set Default Gain [default=%default]")
-    parser.add_option("-a", "--address", dest="address", type="string", default="serial=7R24X9U1, fpga=usrp1_fast_square.rbf, fw=usrp1_fast_square.ihx",
+    parser.add_option("-a", "--address", dest="address", type="string", default="serial=7R24X9U1, fpga=usrp1_fast_square.rbf",
         help="Set IP Address [default=%default]")
     parser.add_option("--test", action="store_true", default=False,
         help="Feed with data from test file")
