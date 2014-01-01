@@ -3,7 +3,7 @@ data = fread(fid,'float');
 fclose(fid);
 data_iq = data(1:2:end) + 1i*data(2:2:end);
 
-num_steps = 63;
+num_steps = 32;
 
 data_iq = round(data_iq*32767);
 
