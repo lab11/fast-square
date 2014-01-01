@@ -48,6 +48,8 @@ class uhd_fft(grc_wxgui.top_block_gui):
         self.param_gain = param_gain
         self.address = address
 
+	self.offset_freq = 10e3
+
 
         ##################################################
         # Variables
@@ -96,16 +98,16 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        	),
 	        )
 
-		g = self.source.get_gain_range()
-		print "rx gain range is (%f,%f)" % (g.start(),g.stop())
-
 		#Channel 0
 	        self.source.set_subdev_spec("A:0 B:0")
 	        self.source.set_center_freq(freq, 0)
 	        self.source.set_gain(gain, 0)
 	        self.source.set_antenna(ant, 0)
 	        self.source.set_bandwidth(samp_rate, 0)
+
 		#Channel 1
+		g = self.source.get_gain_range(1)
+		print "rx gain range is (%f,%f)" % (g.start(),g.stop())
 	        self.source.set_center_freq(self.if_freq, 1) #Mixer @ 4992 MHz
 	        self.source.set_gain(g.stop(), 1)
 	        #self.source.set_antenna(ant, 1)
@@ -199,10 +201,10 @@ class uhd_fft(grc_wxgui.top_block_gui):
         self.subcarrier_est = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, -300000, 1, 0)
 	chan_coeffs = filter.firdes.low_pass(1.0, 1.0, 0.05, 0.05, filter.firdes.WIN_HANN)
 	self.carrier_tracking_filter = filter.fft_filter_ccc(1, chan_coeffs)
-        self.carrier_tracking = analog.pll_refout_cc(0.0003, .1, -.1)
+        self.carrier_tracking = analog.pll_refout_cc(0.0003, .15, -.15)
 	self.carrier_tracking_conj = blocks.conjugate_cc()
 	self.subcarrier_tracking_filter = filter.fft_filter_ccc(1, chan_coeffs)
-        self.subcarrier_tracking = analog.pll_carriertracking_cc(0.000005, .001, -0.001)
+        self.subcarrier_tracking = analog.pll_carriertracking_cc(0.0005, .001, -0.001)
 	self.stitcher = fast_square.freq_stitcher("cal.dat",14*4)
 
 
@@ -222,15 +224,28 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	self.connect(self.subcarrier_est, (self.multiply_1,2))
 	self.connect(self.multiply_1, self.subcarrier_tracking_filter, self.subcarrier_tracking)
 
+#	self.connect((self.source, 0), self.scopesink_0)
 	self.connect(self.multiply_1, self.scopesink_0)
 	self.connect(self.subcarrier_tracking, self.scopesink_1)
 #	self.connect(self.subcarrier_tracking, self.scopesink_2)
 
         def _freq_tracker():
+		loop_count = 0
         	while True:
+			loop_count = loop_count + 1
+
 			#TODO: Is this whole calculation section correct?
 			carrier_freq = self.carrier_tracking.get_frequency()/2/math.pi*self.samp_rate
 			subcarrier_freq = self.subcarrier_tracking.get_frequency()/2/math.pi*self.samp_rate
+
+			print "carrier_freq = %f, \t subcarrier_freq = %f" % (carrier_freq, subcarrier_freq)
+			
+			#TODO: DEBUG ONLY
+			if loop_count > 100:
+				print "GOING DOWN"
+				#carrier_freq = self.offset_freq
+				carrier_freq = carrier_freq + self.offset_freq
+				self.offset_freq = self.offset_freq - 1e2
 
 			#Translate to absolute frequency
 			carrier_freq = self.param_freq+carrier_freq-100e3
@@ -256,7 +271,14 @@ class uhd_fft(grc_wxgui.top_block_gui):
 			if self.test == False:
 				self.source.set_user_register(64+1,subcarrier_reg) #Write to FR_USER_1 (Subcarrier freq reg)
 
-			print "carrier_freq = %f, \t subcarrier_freq = %f, \t carrier_reg = %d, \t subcarrier_reg = %d" % (carrier_freq, subcarrier_freq, carrier_reg, subcarrier_reg)
+			freq_step = ((self.square_freq - subcarrier_freq)*8)/64e6
+			if freq_step < 0:
+				freq_step = freq_step + 1.0
+			freq_step_reg = int(freq_step*(2**32))
+			if self.test == False:
+				self.source.set_user_register(64+2,freq_step_reg)
+
+			print "carrier_freq = %f, \t subcarrier_freq = %f, \t freq_step = %f, \t carrier_reg = %d, \t subcarrier_reg = %d, \t freq_step_reg = %d" % (carrier_freq, subcarrier_freq, freq_step, carrier_reg, subcarrier_reg, freq_step_reg)
 
         		time.sleep(1.0/(10))
 
