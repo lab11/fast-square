@@ -44,6 +44,8 @@ parameter SUM_LO = SUM_HI-15;
 //Phase accumulator for carrier offset
 wire signed [31:0] carrier_freq_set, subcarrier_freq_set;
 reg signed [31:0] carrier_freq_latched;
+wire signed [31:0] freq_step_set;
+reg signed [31:0] freq_step_latched;
 setting_reg #(CARRIERFREQADDR) sr_rxfreq0(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(carrier_freq_set));
 setting_reg #(SUBCARRIERFREQADDR) sr_rxfreq1(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(subcarrier_freq_set));
 
@@ -67,7 +69,6 @@ endgenerate
 
 reg [31:0] subcarrier_sum_i[NUM_SUBCARRIERS-1:0];
 reg [31:0] subcarrier_sum_q[NUM_SUBCARRIERS-1:0];
-reg [31:0] freq_step_small, freq_step_large;
 
 reg [31:0] subcarrier_sum_i_latched[NUM_SUBCARRIERS-1:0];
 reg [31:0] subcarrier_sum_q_latched[NUM_SUBCARRIERS-1:0];
@@ -85,15 +86,13 @@ always @(posedge clock) begin
 			subcarrier_sum_q[ii] <= #1 32'b0;
 		end
 		carrier_freq_latched <= #1 carrier_freq_set;
+		freq_step_latched <= #1 freq_step_set;
 	
 		//TODO: Figure out how to get this into the for..loop
 		subcarrier_freq[0] <= #1 -((subcarrier_freq_set << 1) + subcarrier_freq_set);
 		subcarrier_freq[1] <= #1 -subcarrier_freq_set;
 		subcarrier_freq[2] <= #1 subcarrier_freq_set;
 		subcarrier_freq[3] <= #1 (subcarrier_freq_set << 1) + subcarrier_freq_set;
-	
-		freq_step_small <= #1 (subcarrier_freq_set << 2) + (subcarrier_freq_set << 1) - 32'd2147483648;
-		freq_step_large <= #1 (subcarrier_freq_set << 3) - 32'd2147483648;
 	
 		restart_data <= #1 1'b1;
 		new_data <= #1 1'b0;
@@ -103,11 +102,8 @@ always @(posedge clock) begin
 	end else begin
 	
 		if(freq_step) begin
-			for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin //TODO: Needs more...
-				if(subcarrier_freq[1] > -freq_step_small)
-					subcarrier_freq[ii] <= #1 subcarrier_freq[ii] + freq_step_large;
-				else
-					subcarrier_freq[ii] <= #1 subcarrier_freq[ii] + freq_step_small;
+			for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
+				subcarrier_freq[ii] <= #1 subcarrier_freq[ii] + freq_step_latched;
 			end
 		end
 		if(record) begin
