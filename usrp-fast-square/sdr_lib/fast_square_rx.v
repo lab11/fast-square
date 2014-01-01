@@ -92,8 +92,8 @@ always @(posedge clock) begin
 		subcarrier_freq[2] <= #1 subcarrier_freq_set;
 		subcarrier_freq[3] <= #1 (subcarrier_freq_set << 1) + subcarrier_freq_set;
 	
-		freq_step_small <= #1 32'd2147483648 - (subcarrier_freq_set << 2) - (subcarrier_freq_set << 1);
-		freq_step_large <= #1 32'd2147483648 - (subcarrier_freq_set << 3);
+		freq_step_small <= #1 (subcarrier_freq_set << 2) + (subcarrier_freq_set << 1) - 32'd2147483648;
+		freq_step_large <= #1 (subcarrier_freq_set << 3) - 32'd2147483648;
 	
 		restart_data <= #1 1'b1;
 		new_data <= #1 1'b0;
@@ -108,35 +108,35 @@ always @(posedge clock) begin
 					subcarrier_freq[ii] <= #1 subcarrier_freq[ii] + freq_step_large;
 				else
 					subcarrier_freq[ii] <= #1 subcarrier_freq[ii] + freq_step_small;
-				end
 			end
-			if(record) begin
-				carrier_phase <= #1 carrier_phase + carrier_freq_latched;
-				for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
-					subcarrier_phase[ii] <= #1 subcarrier_phase[ii] - subcarrier_freq[ii];
-				end
-			end else begin
-				carrier_phase <= #1 0;
-				for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
-					subcarrier_phase[ii] <= #1 0;
-				end
-				time_since_last_record <= #1 time_since_last_record + 16'd1;
+		end
+		if(record) begin
+			carrier_phase <= #1 carrier_phase + carrier_freq_latched;
+			for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
+				subcarrier_phase[ii] <= #1 subcarrier_phase[ii] - subcarrier_freq[ii];
 			end
+		end else begin
+			carrier_phase <= #1 0;
+			for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
+				subcarrier_phase[ii] <= #1 0;
+			end
+			time_since_last_record <= #1 time_since_last_record + 16'd1;
+		end
 		
-			//Averaging logic
-			if(freq_step) begin
-				restart_data <= #1 1'b0;
-				new_data <= #1 1'b1;
-				new_data_ctr <= #1 0;
-				time_since_last_record_latched <= #1 time_since_last_record;
-				for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
-					subcarrier_sum_i_latched[ii] <= #1 subcarrier_sum_i[ii];
-					subcarrier_sum_q_latched[ii] <= #1 subcarrier_sum_q[ii];
-					subcarrier_sum_i[ii] <= #1 0;
-					subcarrier_sum_q[ii] <= #1 0;
-				end
-			end else if(record) begin
-				for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
+		//Averaging logic
+		if(freq_step) begin
+			restart_data <= #1 1'b0;
+			new_data <= #1 1'b1;
+			new_data_ctr <= #1 0;
+			time_since_last_record_latched <= #1 time_since_last_record;
+			for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
+				subcarrier_sum_i_latched[ii] <= #1 subcarrier_sum_i[ii];
+				subcarrier_sum_q_latched[ii] <= #1 subcarrier_sum_q[ii];
+				subcarrier_sum_i[ii] <= #1 0;
+				subcarrier_sum_q[ii] <= #1 0;
+			end
+		end else if(record) begin
+			for(ii=0; ii < NUM_SUBCARRIERS; ii=ii+1) begin
 				subcarrier_sum_i[ii] <= #1 subcarrier_sum_i[ii] + {{16{bb_i[ii][15]}},bb_i[ii]};
 				subcarrier_sum_q[ii] <= #1 subcarrier_sum_q[ii] + {{16{bb_q[ii][15]}},bb_q[ii]};
 			end
