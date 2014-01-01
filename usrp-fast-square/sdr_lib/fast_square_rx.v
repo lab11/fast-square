@@ -34,7 +34,7 @@ module fast_square_rx(
 
 parameter CARRIERFREQADDR = 0;
 parameter SUBCARRIERFREQADDR = 1;
-parameter FREQSHIFTADDR = 2;
+parameter FREQSTEPADDR = 2;
 parameter RECORD_TICKS_LOG2 = 14;
 parameter NUM_SUBCARRIERS = 4;
 
@@ -48,6 +48,7 @@ wire signed [31:0] freq_step_set;
 reg signed [31:0] freq_step_latched;
 setting_reg #(CARRIERFREQADDR) sr_rxfreq0(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(carrier_freq_set));
 setting_reg #(SUBCARRIERFREQADDR) sr_rxfreq1(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(subcarrier_freq_set));
+setting_reg #(FREQSTEPADDR) sr_rxfreq1(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(freq_step_set));
 
 reg [31:0] carrier_phase;
 reg [31:0] subcarrier_phase [NUM_SUBCARRIERS-1:0];
