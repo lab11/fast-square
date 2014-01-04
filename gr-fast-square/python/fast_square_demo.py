@@ -42,7 +42,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	self.if_freq = 960e6
 	self.square_freq = 4e6
 	self.num_steps = 32
-	self.lo_start_freq = 5.792e9
+	self.lo_start_freq = 5.312e9
         self.param_samp_rate = param_samp_rate
         self.param_freq = param_freq
         self.param_gain = param_gain
