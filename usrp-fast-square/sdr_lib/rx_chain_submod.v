@@ -50,7 +50,7 @@ module rx_chain_submod
    assign      debugdata = hb_in_i;
 
    assign bb_i = bb_i_mid + i_in;
-   assign bb_q = bb_i_mid + q_in;
+   assign bb_q = bb_q_mid + q_in;
 
    always @(posedge clock) begin
      if(reset)
