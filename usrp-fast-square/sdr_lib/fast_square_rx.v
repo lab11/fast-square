@@ -44,6 +44,7 @@ parameter SUM_LO = SUM_HI-15;
 //Phase accumulator for carrier offset
 wire signed [31:0] carrier_freq_set, subcarrier_freq_set;
 reg signed [31:0] carrier_freq_latched;
+reg signed [31:0] subcarrier_freq_latched;
 wire signed [31:0] freq_step_set;
 reg signed [31:0] freq_step_latched;
 setting_reg #(CARRIERFREQADDR) sr_rxfreq0(.clock(clock),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(carrier_freq_set));
@@ -87,6 +88,7 @@ always @(posedge clock) begin
 			subcarrier_sum_q[ii] <= #1 32'b0;
 		end
 		carrier_freq_latched <= #1 carrier_freq_set;
+		subcarrier_freq_latched <= #1 subcarrier_freq_set;
 		freq_step_latched <= #1 freq_step_set;
 	
 		//TODO: Figure out how to get this into the for..loop
@@ -142,7 +144,7 @@ always @(posedge clock) begin
 		//Final code used for dispatching the received subcarrier sums
 		if(data_out_strobe && new_data) begin
 			new_data_ctr <= #1 new_data_ctr + 4'd1;
-			if(new_data_ctr == NUM_SUBCARRIERS*2) begin
+			if(new_data_ctr == NUM_SUBCARRIERS*2+3) begin
 				new_data <= #1 1'b0;
 				new_data_ctr <= #1 0;
 			end
@@ -153,9 +155,14 @@ end
 assign i_out = (restart_data) ? 16'h8000 : 
 (new_data && new_data_ctr < NUM_SUBCARRIERS) ? subcarrier_sum_i_latched[new_data_ctr[1:0]][31:16] : 
 (new_data && new_data_ctr < NUM_SUBCARRIERS*2) ? subcarrier_sum_q_latched[new_data_ctr[1:0]][31:16] :
-(new_data) ? time_since_last_record_latched : 16'h8000;
+(new_data && new_data_ctr == NUM_SUBCARRIERS*2) ? carrier_freq_latched[31:16] :
+(new_data && new_data_ctr == NUM_SUBCARRIERS*2+1) ? subcarrier_freq_latched[31:16] :
+(new_data && new_data_ctr == NUM_SUBCARRIERS*2+2) ? freq_step_latched[31:16] : 16'h8000;
 assign q_out = (restart_data) ? 16'h8000 : 
 (new_data && new_data_ctr < NUM_SUBCARRIERS) ? subcarrier_sum_i_latched[new_data_ctr[1:0]][15:0] : 
-(new_data && new_data_ctr < NUM_SUBCARRIERS*2) ? subcarrier_sum_q_latched[new_data_ctr[1:0]][15:0] : 16'h0000;
+(new_data && new_data_ctr < NUM_SUBCARRIERS*2) ? subcarrier_sum_q_latched[new_data_ctr[1:0]][15:0] :
+(new_data && new_data_ctr == NUM_SUBCARRIERS*2) ? carrier_freq_latched[15:0] :
+(new_data && new_data_ctr == NUM_SUBCARRIERS*2+1) ? subcarrier_freq_latched[15:0] :
+(new_data && new_data_ctr == NUM_SUBCARRIERS*2+2) ? freq_step_latched[15:0] : 16'h0000;
 
 endmodule
