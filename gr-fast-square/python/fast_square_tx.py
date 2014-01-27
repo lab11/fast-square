@@ -21,7 +21,7 @@ import wx
 
 class uhd_const_wave(grc_wxgui.top_block_gui):
 
-    def __init__(self, samp_rate=1e6, gain=0, freq=5.8001e9, address="serial=4cfc5bc8"):
+    def __init__(self, samp_rate=1e6, gain=0, freq=5.792e9, address="serial=4cfc5bc8"):
         grc_wxgui.top_block_gui.__init__(self, title="UHD Constant Wave")
 
         ##################################################
@@ -198,7 +198,7 @@ if __name__ == '__main__':
         help="Set Sample Rate [default=%default]")
     parser.add_option("-g", "--gain", dest="gain", type="eng_float", default=eng_notation.num_to_str(28.5),
         help="Set Default Gain [default=%default]")
-    parser.add_option("-f", "--freq", dest="freq", type="eng_float", default=eng_notation.num_to_str(5.8e9),
+    parser.add_option("-f", "--freq", dest="freq", type="eng_float", default=eng_notation.num_to_str(5.792e9),
         help="Set Default Frequency [default=%default]")
     parser.add_option("-a", "--address", dest="address", type="string", default="serial=4cfc5bc8",
         help="Set IP Address [default=%default]")

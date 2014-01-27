@@ -38,7 +38,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
         ##################################################
         # Parameters
         ##################################################
-	param_freq = 5.8e9
+	param_freq = 5.792e9
 	self.if_freq = 960e6
 	self.square_freq = 4e6
 	self.num_steps = 32
@@ -212,8 +212,10 @@ class uhd_fft(grc_wxgui.top_block_gui):
 		self.connect(self.source_freqs, self.stitcher)
 	else:
 		if self.tofile == True:
-			self.logfile = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan1.dat")
-			self.connect((self.source, 1), self.logfile)
+			self.logfile0 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan0.dat")
+			self.connect((self.source, 0), self.logfile0)
+			self.logfile1 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan1.dat")
+			self.connect((self.source, 1), self.logfile1)
 		self.connect((self.source, 1), self.stitcher)
 
 	self.connect((self.source, 0), (self.multiply_0,0))
@@ -241,11 +243,11 @@ class uhd_fft(grc_wxgui.top_block_gui):
 			print "carrier_freq = %f, \t subcarrier_freq = %f" % (carrier_freq, subcarrier_freq)
 			
 			#TODO: DEBUG ONLY
-			if loop_count > 100:
-				print "GOING DOWN"
-				#carrier_freq = self.offset_freq
-				carrier_freq = carrier_freq + self.offset_freq
-				self.offset_freq = self.offset_freq - 1e2
+			#if loop_count > 100:
+			#	print "GOING DOWN"
+			#	#carrier_freq = self.offset_freq
+			#	carrier_freq = carrier_freq + self.offset_freq
+			#	self.offset_freq = self.offset_freq - 1e2
 
 			#Translate to absolute frequency
 			carrier_freq = self.param_freq+carrier_freq-100e3
