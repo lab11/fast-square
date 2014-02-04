@@ -291,7 +291,7 @@ module usrp_std_hs_bb
        .reset(fast_square_rx_reset),
        .freq_step(fast_square_rx_next),
        .record(fast_square_rx_record),
-       .data_out_strobe(hb_strobe),
+       .data_out_strobe(),
        .i_in(ddc1_in_i),
        .q_in(ddc1_in_q),
        .i_out(bb_rx_i1),

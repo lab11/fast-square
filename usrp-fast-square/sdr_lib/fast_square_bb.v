@@ -22,9 +22,9 @@ module fast_square_bb(
 	input reset,
 	input freq_step,
 	input record,
-	input data_out_strobe,
-	input signed wire [15:0] i_in,
-	input signed wire [15:0] q_in,
+	output data_out_strobe,
+	input wire signed [15:0] i_in,
+	input wire signed [15:0] q_in,
 	output wire [15:0] i_out,
 	output wire [15:0] q_out
 );
@@ -38,6 +38,12 @@ reg [15:0] q_sr_out;
 wire [15:0] i_dc_incr = i_in - i_dc_ave[31:16];
 wire [15:0] q_dc_incr = q_in - q_dc_ave[31:16];
 
+reg [15:0] reset_counter;
+reg restart_data;
+
+reg [3:0] data_out_counter;
+assign data_out_strobe = (data_out_counter == 4'hF);
+
 always @(posedge clock) begin
 	if(reset) begin
 		i_sr_out <= #1 16'd0;
@@ -45,12 +51,27 @@ always @(posedge clock) begin
 
 		i_dc_ave <= #1 32'd0;
 		q_dc_ave <= #1 32'd0;
+		
+		restart_data <= #1 1'b1;
+		reset_counter <= #1 0;
+		data_out_counter <= #1 0;
 	end else begin
-		i_sr_out <= #1 {i_sr_out[14:0], (i_in > i_dc_ave)};
-		q_sr_out <= #1 {q_sr_out[14:0], (q_in > q_dc_ave)};
+		data_out_counter <= #1 data_out_counter + 1;
+	
+		i_sr_out <= #1 {i_sr_out[14:0], (i_in > i_dc_ave[31:16])};
+		q_sr_out <= #1 {q_sr_out[14:0], (q_in > q_dc_ave[31:16])};
 
-		i_dc_ave <= #1 i_dc_ave + {{16}{i_dc_incr[15]},i_dc_incr};
-		q_dc_ave <= #1 q_dc_ave + {{16}{q_dc_incr[15]},q_dc_incr};
+		i_dc_ave <= #1 i_dc_ave + {{16{i_dc_incr[15]}},i_dc_incr};
+		q_dc_ave <= #1 q_dc_ave + {{16{q_dc_incr[15]}},q_dc_incr};
+		
+		if(data_out_strobe) begin
+			if(reset_counter <= 200) begin
+				reset_counter <= #1 reset_counter + 1;
+			end else begin
+				restart_data <= #1 1'b0;
+			end
+		end
+		
 	end
 end
 

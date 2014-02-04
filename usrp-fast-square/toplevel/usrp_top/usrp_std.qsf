@@ -220,7 +220,7 @@ set_global_assignment -name FAMILY Cyclone
 set_global_assignment -name CYCLONE_OPTIMIZATION_TECHNIQUE BALANCED
 set_global_assignment -name STRATIX_OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name APEX20K_OPTIMIZATION_TECHNIQUE SPEED
-set_global_assignment -name TOP_LEVEL_ENTITY usrp_std
+set_global_assignment -name TOP_LEVEL_ENTITY usrp_std_hs_bb
 set_global_assignment -name VHDL_SHOW_LMF_MAPPING_MESSAGES OFF
 set_global_assignment -name USER_LIBRARIES "e:\\usrp\\fpga\\megacells"
 set_global_assignment -name AUTO_ENABLE_SMART_COMPILE ON
@@ -360,9 +360,6 @@ set_global_assignment -name INCLUDE_EXTERNAL_PIN_DELAYS_IN_FMAX_CALCULATIONS OFF
 
 	# Timing Assignments
 	# ==================
-set_instance_assignment -name CLOCK_SETTINGS SCLK -to SCLK
-set_instance_assignment -name CLOCK_SETTINGS usbclk -to usbclk
-set_instance_assignment -name CLOCK_SETTINGS master_clk -to master_clk
 
 # end ENTITY(usrp_std)
 # --------------------
@@ -370,6 +367,12 @@ set_instance_assignment -name CLOCK_SETTINGS master_clk -to master_clk
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_instance_assignment -name CLOCK_SETTINGS SCLK -to SCLK
+set_instance_assignment -name CLOCK_SETTINGS usbclk -to usbclk
+set_instance_assignment -name CLOCK_SETTINGS master_clk -to master_clk
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to io_tx_b[3]
+set_global_assignment -name VERILOG_FILE ../../sdr_lib/fast_square_bb.v
+set_global_assignment -name VERILOG_FILE usrp_std_hs_bb.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/debounce.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/fast_square_controller.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/fast_square_rx.v
@@ -412,4 +415,3 @@ set_global_assignment -name VERILOG_FILE ../../sdr_lib/serial_io.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/strobe_gen.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/sign_extend.v
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to io_tx_b[3]
