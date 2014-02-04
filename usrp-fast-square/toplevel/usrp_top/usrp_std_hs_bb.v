@@ -279,7 +279,7 @@ module usrp_std_hs_bb
    );
    assign io_tx_b[0] = fast_square_freq_step;
    assign io_tx_b[2] = ~rx_dsp_reset;
-   debounce db0(.clk(clk64), .in(~io_tx_b[1]), .out(fast_square_freq_step_reset));//TODO: Switch back to non-inverted once new boards come back
+   debounce db0(.clk(clk64), .in(io_tx_b[1]), .out(fast_square_freq_step_reset));//TODO: Switch back to non-inverted once new boards come back
    //assign FX2_2 = fast_square_freq_step;//OVERRUN
    //assign FX2_3 = fast_square_freq_step_reset;//UNDERRUN
 	
