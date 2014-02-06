@@ -269,7 +269,7 @@ module usrp_std_hs_bb
    wire [3:0] fast_square_debug;
    fast_square_controller #(NUM_FREQ_STEPS,RECORD_TICKS) fsc(
        .clock(clk64),
-       .reset(rx_dsp_reset | ~io_tx_b[3]),
+       .reset(rx_dsp_reset | ~io_rx_a[15]),
        .freq_step_reset_in(fast_square_freq_step_reset),
        .freq_step_out(fast_square_freq_step),
        .rx_reset(fast_square_rx_reset),
@@ -277,9 +277,9 @@ module usrp_std_hs_bb
        .rx_record(fast_square_rx_record),
        .debug(fast_square_debug)
    );
-   assign io_tx_b[0] = fast_square_freq_step;
-   assign io_tx_b[2] = ~rx_dsp_reset;
-   debounce db0(.clk(clk64), .in(io_tx_b[1]), .out(fast_square_freq_step_reset));//TODO: Switch back to non-inverted once new boards come back
+   assign io_rx_a[12] = fast_square_freq_step;
+   assign io_rx_a[14] = ~rx_dsp_reset;
+   debounce db0(.clk(clk64), .in(io_rx_a[13]), .out(fast_square_freq_step_reset));//TODO: Switch back to non-inverted once new boards come back
    //assign FX2_2 = fast_square_freq_step;//OVERRUN
    //assign FX2_3 = fast_square_freq_step_reset;//UNDERRUN
 	
@@ -356,9 +356,9 @@ module usrp_std_hs_bb
        .debug_2(rx_debugbus[15:0]),.debug_3(rx_debugbus[31:16]),
        .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3) );
    
-   wire [15:0] unused_io_tx_b;
+   wire [15:0] unused_io_rx_a;
    io_pins io_pins
-     (.io_0(io_tx_a),.io_1(io_rx_a),.io_2({io_tx_b[15:4],unused_io_tx_b[3:0]}),.io_3(io_rx_b),
+     (.io_0(io_tx_a),.io_1({unused_io_rx_a[15:12],io_rx_a[11:0]}),.io_2(io_tx_b),.io_3(io_rx_b),
       .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3),
       .clock(clk64),.rx_reset(rx_dsp_reset),.tx_reset(tx_dsp_reset),
       .serial_addr(serial_addr),.serial_data(serial_data),.serial_strobe(serial_strobe));
