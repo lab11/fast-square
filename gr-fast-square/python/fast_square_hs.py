@@ -67,29 +67,6 @@ class uhd_fft(grc_wxgui.top_block_gui):
         ##################################################
         # Blocks
         ##################################################
-        _gain_sizer = wx.BoxSizer(wx.VERTICAL)
-        self._gain_text_box = forms.text_box(
-        	parent=self.GetWin(),
-        	sizer=_gain_sizer,
-        	value=self.gain,
-        	callback=self.set_gain,
-        	label="RX Gain",
-        	converter=forms.float_converter(),
-        	proportion=0,
-        )
-        self._gain_slider = forms.slider(
-        	parent=self.GetWin(),
-        	sizer=_gain_sizer,
-        	value=self.gain,
-        	callback=self.set_gain,
-        	minimum=0,
-        	maximum=112.5,
-        	num_steps=225,
-        	style=wx.SL_HORIZONTAL,
-        	cast=float,
-        	proportion=1,
-        )
-        self.GridAdd(_gain_sizer, 2, 0, 1, 8)
 	if self.test == False:
 	        self.source = uhd.usrp_source(
 	        	device_addr=address,
@@ -168,7 +145,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 			self.connect((self.source2, 0), self.logfile2)
 			self.logfile3 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan3.dat")
 			self.connect((self.source2, 1), self.logfile3)
-		self.connect((self.source, 1), self.stitcher)
+		#self.connect((self.source, 1), self.stitcher)
 
 if __name__ == '__main__':
     parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
