@@ -32,15 +32,25 @@ module fast_square_bb(
 reg [15:0] i_sr_out;
 reg [15:0] q_sr_out;
 
+//IIR FILTER
+reg signed [31:0] i_dc_ave;
+reg signed [31:0] q_dc_ave;
+wire [15:0] i_dc_incr = i_in - i_dc_ave[31:16];
+wire [15:0] q_dc_incr = q_in - q_dc_ave[31:16];
+
+//COMB FILTER
 reg [3:0] hist_counter;
 reg [19:0] i_hist[15:0];
 reg [19:0] q_hist[15:0];
 
-wire [19:0] i_sum;
-wire [19:0] q_sum;
+wire signed [19:0] i_sum;
+wire signed [19:0] q_sum;
 
-assign i_sum = {{4{i_in[15]}},i_in} - i_hist[hist_counter] + {{4{q_hist[hist_counter][19]}},i_hist[hist_counter][19:4]};
-assign q_sum = {{4{q_in[15]}},q_in} - q_hist[hist_counter] + {{4{q_hist[hist_counter][19]}},q_hist[hist_counter][19:4]};
+wire [15:0] i_comb_in = i_dc_incr;
+wire [15:0] q_comb_in = q_dc_incr;
+
+assign i_sum = {{4{i_comb_in[15]}},i_comb_in} - i_hist[hist_counter] + {{4{i_hist[hist_counter][19]}},i_hist[hist_counter][19:4]};
+assign q_sum = {{4{q_comb_in[15]}},q_comb_in} - q_hist[hist_counter] + {{4{q_hist[hist_counter][19]}},q_hist[hist_counter][19:4]};
 
 reg [15:0] reset_counter;
 reg restart_data;
@@ -61,6 +71,9 @@ always @(posedge clock) begin
 		end
 		`endif
 
+		i_dc_ave <= #1 32'd0;
+		q_dc_ave <= #1 32'd0;
+
 		restart_data <= #1 1'b1;
 		reset_counter <= #1 0;
 		data_out_counter <= #1 0;
@@ -68,6 +81,9 @@ always @(posedge clock) begin
 	end else begin
 		data_out_counter <= #1 data_out_counter + 1;
 		hist_counter <= #1 hist_counter + 1;
+
+		i_dc_ave <= #1 i_dc_ave + {{8{i_dc_incr[15]}},i_dc_incr,8'd0};
+		q_dc_ave <= #1 q_dc_ave + {{8{q_dc_incr[15]}},q_dc_incr,8'd0};
 	
 		i_sr_out <= #1 {i_sr_out[14:0], (i_sum > 0)};
 		q_sr_out <= #1 {q_sr_out[14:0], (q_sum > 0)};
