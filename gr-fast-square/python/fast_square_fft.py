@@ -299,7 +299,7 @@ if __name__ == '__main__':
         help="Set Default Frequency [default=%default]")
     parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(0),
         help="Set Default Gain [default=%default]")
-    parser.add_option("-a", "--address", dest="address", type="string", default="serial=7R24X9U1",#, fpga=usrp1_fast_square.rbf",
+    parser.add_option("-a", "--address", dest="address", type="string", default="serial=9R24X1U1",#7R24X9U1",#, fpga=usrp1_fast_square.rbf",
         help="Set IP Address [default=%default]")
     (options, args) = parser.parse_args()
     tb = uhd_fft(param_samp_rate=options.param_samp_rate, param_freq=options.param_freq, param_gain=options.param_gain, address=options.address)
