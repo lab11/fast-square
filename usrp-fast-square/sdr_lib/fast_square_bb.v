@@ -61,8 +61,8 @@ always @(posedge clock) begin
 		i_sr_out <= #1 {i_sr_out[14:0], (i_in > i_dc_ave[31:16])};
 		q_sr_out <= #1 {q_sr_out[14:0], (q_in > q_dc_ave[31:16])};
 
-		i_dc_ave <= #1 i_dc_ave + {{16{i_dc_incr[15]}},i_dc_incr};
-		q_dc_ave <= #1 q_dc_ave + {{16{q_dc_incr[15]}},q_dc_incr};
+		i_dc_ave <= #1 i_dc_ave + {{8{i_dc_incr[15]}},i_dc_incr,8'd0};
+		q_dc_ave <= #1 q_dc_ave + {{8{q_dc_incr[15]}},q_dc_incr,8'd0};
 		
 		if(data_out_strobe) begin
 			if(reset_counter <= 200) begin
