@@ -13,8 +13,8 @@ output [BIT_WIDTH-1:0] i_out;
 output [BIT_WIDTH-1:0] q_out;
 
 reg [DELAY_LOG2-1:0] hist_counter;
-reg [BIT_WIDTH+FB_SHIFT-1:0] i_hist[BIT_WIDTH-1:0];
-reg [BIT_WIDTH+FB_SHIFT-1:0] q_hist[BIT_WIDTH-1:0];
+reg [BIT_WIDTH+FB_SHIFT-1:0] i_hist[2**DELAY_LOG2-1:0];
+reg [BIT_WIDTH+FB_SHIFT-1:0] q_hist[2**DELAY_LOG2-1:0];
 
 wire signed [BIT_WIDTH+FB_SHIFT-1:0] i_sum = {{FB_SHIFT{i_in[BIT_WIDTH-1]}},i_in} - i_hist[hist_counter] + {{FB_SHIFT{i_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1]}},i_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1:FB_SHIFT]};
 wire signed [BIT_WIDTH+FB_SHIFT-1:0] q_sum = {{FB_SHIFT{q_in[BIT_WIDTH-1]}},q_in} - q_hist[hist_counter] + {{FB_SHIFT{q_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1]}},q_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1:FB_SHIFT]};
@@ -28,7 +28,7 @@ assign q_out = q_sum_reg[BIT_WIDTH+FB_SHIFT-1:FB_SHIFT];
 always @(posedge clock) begin
 	if(reset) begin
 		`ifdef SIM
-		for(i=0; i<16; i=i+1) begin
+		for(i=0; i<2**DELAY_LOG2; i=i+1) begin
 			i_hist[i] <= #1 0;
 			q_hist[i] <= #1 0;
 		end
