@@ -39,18 +39,18 @@ wire [15:0] i_dc_incr = i_in - i_dc_ave[31:16];
 wire [15:0] q_dc_incr = q_in - q_dc_ave[31:16];
 
 //COMB FILTER
-reg [3:0] hist_counter;
-reg [19:0] i_hist[15:0];
-reg [19:0] q_hist[15:0];
+reg [2:0] hist_counter;
+reg [18:0] i_hist[7:0];
+reg [18:0] q_hist[7:0];
 
-wire signed [19:0] i_sum;
-wire signed [19:0] q_sum;
+wire signed [18:0] i_sum;
+wire signed [18:0] q_sum;
 
 wire [15:0] i_comb_in = i_dc_incr;
 wire [15:0] q_comb_in = q_dc_incr;
 
-assign i_sum = {{4{i_comb_in[15]}},i_comb_in} - i_hist[hist_counter] + {{4{i_hist[hist_counter][19]}},i_hist[hist_counter][19:4]};
-assign q_sum = {{4{q_comb_in[15]}},q_comb_in} - q_hist[hist_counter] + {{4{q_hist[hist_counter][19]}},q_hist[hist_counter][19:4]};
+assign i_sum = {{3{i_comb_in[15]}},i_comb_in} - i_hist[hist_counter] + {{3{i_hist[hist_counter][18]}},i_hist[hist_counter][18:3]};
+assign q_sum = {{3{q_comb_in[15]}},q_comb_in} - q_hist[hist_counter] + {{3{q_hist[hist_counter][18]}},q_hist[hist_counter][18:3]};
 
 reg [15:0] reset_counter;
 reg restart_data;
