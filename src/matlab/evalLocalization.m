@@ -13,7 +13,7 @@ antenna_coords = [antenna_coords(:,1),antenna_coords(:,3),antenna_coords(:,2)+1]
 num_ant = size(antenna_coords,1)
 
 %Transform to frequency response at each anchor antenna
-[toas, freq_responses] = simulateAntennaArrayToA(source_coord, antenna_coords, freqs, 1, 10);
+[toas, freq_responses] = simulateAntennaArrayToA(source_coord, antenna_coords, freqs, 1, 1);
 
 %Construct search space for the source
 [x,y,z] = meshgrid(-3:0.05:3, 0:0.05:6, 0);
