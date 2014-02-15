@@ -9,15 +9,15 @@ input clock;
 input reset;
 input [BIT_WIDTH-1:0] i_in;
 input [BIT_WIDTH-1:0] q_in;
-input [BIT_WIDTH-1:0] i_out;
+output [BIT_WIDTH-1:0] i_out;
 output [BIT_WIDTH-1:0] q_out;
 
 reg [DELAY_LOG2-1:0] hist_counter;
 reg [BIT_WIDTH+FB_SHIFT-1:0] i_hist[BIT_WIDTH-1:0];
 reg [BIT_WIDTH+FB_SHIFT-1:0] q_hist[BIT_WIDTH-1:0];
 
-wire signed [BIT_WIDTH+FB_SHIFT-1:0] i_sum = {{FB_SHIFT{i_comb_in[BIT_WIDTH-1]}},i_comb_in} - i_hist[hist_counter] + {{FB_SHIFT{i_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1]}},i_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1:FB_SHIFT]};;
-wire signed [BIT_WIDTH+FB_SHIFT-1:0] q_sum = {{FB_SHIFT{q_comb_in[BIT_WIDTH-1]}},q_comb_in} - q_hist[hist_counter] + {{FB_SHIFT{q_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1]}},q_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1:FB_SHIFT]};;
+wire signed [BIT_WIDTH+FB_SHIFT-1:0] i_sum = {{FB_SHIFT{i_in[BIT_WIDTH-1]}},i_in} - i_hist[hist_counter] + {{FB_SHIFT{i_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1]}},i_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1:FB_SHIFT]};
+wire signed [BIT_WIDTH+FB_SHIFT-1:0] q_sum = {{FB_SHIFT{q_in[BIT_WIDTH-1]}},q_in} - q_hist[hist_counter] + {{FB_SHIFT{q_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1]}},q_hist[hist_counter][BIT_WIDTH+FB_SHIFT-1:FB_SHIFT]};
 
 reg [BIT_WIDTH+FB_SHIFT-1:0] i_sum_reg;
 reg [BIT_WIDTH+FB_SHIFT-1:0] q_sum_reg;
