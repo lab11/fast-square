@@ -25,6 +25,7 @@ reg [BIT_WIDTH+FB_SHIFT-1:0] q_sum_reg;
 assign i_out = i_sum_reg[BIT_WIDTH+FB_SHIFT-1:FB_SHIFT];
 assign q_out = q_sum_reg[BIT_WIDTH+FB_SHIFT-1:FB_SHIFT];
 
+integer i;
 always @(posedge clock) begin
 	if(reset) begin
 		`ifdef SIM

@@ -14,7 +14,7 @@ reg [15:0] i_in, q_in;
 wire [15:0] i_out, q_out;
 
 //Modules
-fast_square_bb u0(
+fast_square_bb_comb u0(
 	.clock(clk),
 	.reset(reset),
 	.freq_step(1'b0),
@@ -44,6 +44,7 @@ begin
 	@ (posedge clk);
 	`SD reset = 0;
 	@ (posedge clk);
+	i_in = 16'h0000;
 	@ (posedge clk);
 	@ (posedge clk);
 

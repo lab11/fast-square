@@ -19,7 +19,8 @@ LIB_PATH = ../sdr_lib
 
 #TESTBENCH = tb_mbus.v
 TESTBENCH = testbench.v
-SIMFILES = 	$(LIB_PATH)/fast_square_bb.v
+SIMFILES = 	$(LIB_PATH)/fast_square_bb_comb.v \
+		$(LIB_PATH)/comb_filter.v
 
 SYNFILES = 	$(LIB_PATH)/../syn/mbus_node32_ab.nl.v \
 		$(LIB_PATH)/../syn/mbus_node32_cd.nl.v \
