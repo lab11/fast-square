@@ -11,6 +11,7 @@ from gnuradio import eng_notation
 from gnuradio import gr
 from gnuradio import uhd
 from gnuradio import wxgui
+from gnuradio import blocks
 from gnuradio.eng_option import eng_option
 from gnuradio.fft import window
 from gnuradio.filter import firdes
@@ -27,13 +28,12 @@ import wx
 
 class uhd_fft(grc_wxgui.top_block_gui):
 
-    def __init__(self, param_samp_rate, param_freq, param_gain, address):
+    def __init__(self, options, param_samp_rate, param_freq, param_gain, address):
         grc_wxgui.top_block_gui.__init__(self, title="UHD FFT")
 
         ##################################################
         # Parameters
         ##################################################
-	param_freq = 5.78666666667e9
         self.param_samp_rate = param_samp_rate
         self.param_freq = param_freq
         self.param_gain = param_gain
@@ -129,6 +129,9 @@ class uhd_fft(grc_wxgui.top_block_gui):
         self.uhd_usrp_source_0.set_gain(gain, 0)
         self.uhd_usrp_source_0.set_antenna(ant, 0)
         self.uhd_usrp_source_0.set_bandwidth(samp_rate, 0)
+	if options.tofile == True:
+		self.logfile0 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_fft_iq.dat")
+		self.connect(self.uhd_usrp_source_0, self.logfile0)
 	
 	g = self.uhd_usrp_source_0.get_gain_range()
 	print "rx gain range is (%f,%f)" % (g.start(),g.stop())
@@ -295,14 +298,16 @@ if __name__ == '__main__':
     parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
     parser.add_option("-s", "--param-samp-rate", dest="param_samp_rate", type="eng_float", default=eng_notation.num_to_str(1e6),
         help="Set Sample Rate [default=%default]")
-    parser.add_option("-f", "--param-freq", dest="param_freq", type="eng_float", default=eng_notation.num_to_str(5.8e9),
+    parser.add_option("-f", "--param-freq", dest="param_freq", type="eng_float", default=eng_notation.num_to_str(960e6),
         help="Set Default Frequency [default=%default]")
-    parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(0),
+    parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(80),
         help="Set Default Gain [default=%default]")
     parser.add_option("-a", "--address", dest="address", type="string", default="serial=9R24X1U1",#7R24X9U1",#, fpga=usrp1_fast_square.rbf",
         help="Set IP Address [default=%default]")
+    parser.add_option("--tofile", action="store_true", default=False,
+        help="Push IQ data to file")
     (options, args) = parser.parse_args()
-    tb = uhd_fft(param_samp_rate=options.param_samp_rate, param_freq=options.param_freq, param_gain=options.param_gain, address=options.address)
+    tb = uhd_fft(options=options, param_samp_rate=options.param_samp_rate, param_freq=options.param_freq, param_gain=options.param_gain, address=options.address)
     tb.Start(True)
     tb.Wait()
 
