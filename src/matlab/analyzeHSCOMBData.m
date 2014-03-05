@@ -1,11 +1,6 @@
 RECORD_TICKS = 35000;
 total_ticks = RECORD_TICKS + 1 + 642 + 31;
 
-%data_iq0 = readHSData('usrp_chan0.dat');
-%data_iq1 = readHSData('usrp_chan1.dat');
-%data_iq2 = readHSData('usrp_chan2.dat');
-data_iq3 = readHSCOMBData('usrp_chan3.dat');
-
 %Define constantsf for this implementation
 start_lo_freq = 5.312e9;
 if_freq = 960e6;
@@ -27,11 +22,22 @@ anchor_positions = [...
 	0.0, 0.0, 0.0 ...
 ];
 
+%TODO: May need to selectively read parts of files since this is pretty memory-intense
+for ii=1:size(anchor_positions,1
+	data_iq(ii,:,:,:) = readHSData(['usrp_chan', num2str(ii-1), '.dat']);
+end
+
+%Construct a candidate search space over which to look for the tag
+[x,y,z] = meshgrid(0:.05:4,0:.05:4,-2:.05:2);
+physical_searchspace = [x(:),y(:),z(:)];
+
 %Loop through each timepoint
 for ii=1:size(data_iq3,2)
-	cur_iq_data = squeeze(data_iq3(:,ii,:));
+	for jj=1:size(anchor_positions,1)
+		cur_iq_data(ii,:,:) = squeeze(data_iq(jj,:,ii,:));
+	end
 
-	%size(cur_iq_data) = [<num_freq_steps>, <num_samples_per_step>]
+	%size(cur_iq_data) = [<num_anchors>, <num_freq_steps>, <num_samples_per_step>]
 	carrier_segment = ceil(carrier_freq-(start_freq-sample_rate/2))/step_freq+1;
 
 	%Start by searching for the apparent carrier offset contained within the segment which contains it
@@ -56,8 +62,8 @@ for ii=1:size(data_iq3,2)
 
 			cur_corr = 0;
 			for harmonic_num = -num_present_harmonics:2:num_present_harmonics
-				cur_bb = exp(1i*(1:size(cur_iq_data,2))*2*pi*(square_decim_freq*harmonic_num+carrier_est)/(sample_rate/decim_factor));
-				cur_bb = cur_bb .* cur_iq_data(carrier_segment, :);
+				cur_bb = exp(1i*(1:size(cur_iq_data,3))*2*pi*(square_decim_freq*harmonic_num+carrier_est)/(sample_rate/decim_factor));
+				cur_bb = cur_bb .* cur_iq_data(1,carrier_segment, :);
 
 				cur_corr = cur_corr + abs(sum(cur_bb));
 			end
@@ -76,19 +82,27 @@ for ii=1:size(data_iq3,2)
 
 	%Extract amplitude, phase measurements from entire dataset
 	num_harmonics_present = floor((sample_rate-square_est)/(square_est*2));
-	square_phasors = zeros(size(cur_iq_data,1),num_harmonics_present);
-	for cur_freq_step = 1:size(cur_iq_data,1)
-		cur_square_freqs = (square_freq+step_freq*(carrier_segment-1))+carrier_offset;
-		harmonic_idx = 1;
-		for harmoic_num = -num_present_harmonics:2:num_present_harmonics
-			cur_bb = exp(1i*(1:size(cur_iq_data,2))*2*pi*(square_est*harmonic_num+carrier_offset)/(sample_rate/decim_factor));
-			square_phasors(cur_freq_step,harmonic_idx)  = cur_bb .* cur_iq_data(cur_freq_step, :);
-			harmonic_idx = harmonic_idx + 1;
+	square_phasors = zeros(size(anchor_positions,1),size(cur_iq_data,2)*num_harmonics_present);
+	for cur_anchor_idx = 1:size(anchor_positions,1)
+		for cur_freq_step = 1:size(cur_iq_data,2)
+			cur_square_freqs = (square_freq+step_freq*(carrier_segment-1))+carrier_offset;
+			harmonic_idx = 1;
+			for harmoic_num = -num_present_harmonics:2:num_present_harmonics
+				cur_bb = exp(1i*(1:size(cur_iq_data,3))*2*pi*(square_est*harmonic_num+carrier_offset)/(sample_rate/decim_factor));
+				square_phasors(cur_anchor_idx,cur_freq_step,harmonic_idx)  = cur_bb .* cur_iq_data(cur_anchor_idx,cur_freq_step, :);
+				harmonic_idx = harmonic_idx + 1;
+			end
 		end
 	end
 	
 	%Extract apparent length of LO cable from successive inter-segment phase measurements
-	lo_cable_length = square_phasors(carrier_segment,)-square_phasors(carrier_segment+1,)
+	num_harmonic_step = round(-step_freq/square_freq/2);
+	phase_step = (square_phasors(1,carrier_segment,1))-angle(square_phasors(1,carrier_segment+1,1+num_harmonic_step));
+
+	%Remove accumulated phase error across successive frequency steps
+	for ii=1:size(cur_iq_data,2)
+		square_phasors(:,ii,:) = square_phasors(:,ii,:)*exp(-1i*phase_step*(ii-1));
+	end
 	
 	%Perform localization operations
 	physical_est = physical_search_space(1,:);
