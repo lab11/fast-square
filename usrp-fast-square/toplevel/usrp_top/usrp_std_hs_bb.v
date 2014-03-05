@@ -241,7 +241,7 @@ module usrp_std_hs_bb
        .debugbus(rx_debugbus) );
    
  `ifdef RX_EN_0
-   fast_square_bb fsr0(
+   fast_square_bb_comb fsr0(
        .clock(clk64),
        .reset(fast_square_rx_reset),
        .freq_step(fast_square_rx_next),
@@ -286,7 +286,7 @@ module usrp_std_hs_bb
 	//assign bb_rx_i1 = {fast_square_debug, fast_square_freq_step_reset, fast_square_freq_step, fast_square_rx_reset, fast_square_rx_next, fast_square_rx_record};
 	//assign bb_rx_q1 = 16'd0;
 
-   fast_square_bb fsr1(
+   fast_square_bb_comb fsr1(
        .clock(clk64),
        .reset(fast_square_rx_reset),
        .freq_step(fast_square_rx_next),

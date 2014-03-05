@@ -370,6 +370,9 @@ set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_instance_assignment -name CLOCK_SETTINGS SCLK -to SCLK
 set_instance_assignment -name CLOCK_SETTINGS usbclk -to usbclk
 set_instance_assignment -name CLOCK_SETTINGS master_clk -to master_clk
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to io_rx_a[15]
+set_global_assignment -name VERILOG_FILE ../../sdr_lib/comb_filter.v
+set_global_assignment -name VERILOG_FILE ../../sdr_lib/fast_square_bb_comb.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/fast_square_bb.v
 set_global_assignment -name VERILOG_FILE usrp_std_hs_bb.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/debounce.v
@@ -413,5 +416,4 @@ set_global_assignment -name VERILOG_FILE ../../sdr_lib/clk_divider.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/serial_io.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/strobe_gen.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/sign_extend.v
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to io_rx_a[15]
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
