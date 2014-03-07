@@ -48,17 +48,16 @@ end
 
 
 %Loop through each timepoint
-for ii=1:size(data_iq3,2)
-	cur_iq_data = squeeze(data_iq(:,:,ii,:));
+for cur_timepoint=1:size(data_iq,2)
+	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
 
 	carrierSearch;
 
 	harmonicExtraction;
 
 	harmonicLocalization;
-
-	findMaxEstimate;
-	keyboard;
+    
+    save(['timestep',num2str(cur_timepoint)], 'est_likelihood', 'est_position', 'carrier_offset', 'square_est');
 end
 
 num_steps = 32;

@@ -12,7 +12,7 @@ for cur_anchor_idx = 1:size(anchor_positions,1)
 	end
 end
 
-keyboard;
+%keyboard;
 
 %Extract apparent length of LO cable from successive inter-segment phase measurements
 num_harmonic_step = round(-step_freq/square_freq/2);
