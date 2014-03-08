@@ -22,7 +22,7 @@ for carrier_est = carrier_search
 
 		cur_corr = 0;
 		for harmonic_num = -num_harmonics_present:2:num_harmonics_present
-			cur_bb = exp(1i*(1:size(cur_iq_data,3))*2*pi*(square_decim_freq*harmonic_num+carrier_est)/(sample_rate/decim_factor));
+			cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(square_decim_freq*harmonic_num+carrier_est)/(sample_rate/decim_factor));
 			cur_bb = cur_bb .* squeeze(cur_iq_data(1,carrier_segment, :)).';
 
 			cur_corr = cur_corr + abs(sum(cur_bb));

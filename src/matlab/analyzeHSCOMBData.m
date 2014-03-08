@@ -54,10 +54,15 @@ for cur_timepoint=1:size(data_iq,2)
 	carrierSearch;
 
 	harmonicExtraction;
-
-	harmonicLocalization;
     
-    save(['timestep',num2str(cur_timepoint)], 'est_likelihood', 'est_position', 'carrier_offset', 'square_est');
+    keyboard;
+    
+    harmonicCalibration;
+
+	%harmonicLocalization;
+    
+    %keyboard;
+    save(['timestep',num2str(cur_timepoint)], 'est_likelihood', 'est_position', 'carrier_offset', 'square_est', 'square_phasors', 'phase_step');
 end
 
 num_steps = 32;

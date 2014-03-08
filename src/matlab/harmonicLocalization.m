@@ -3,6 +3,7 @@
 physical_est = physical_search_space(1,:);
 physical_distances = zeros(size(anchor_positions,1),1);
 est_likelihood = zeros(size(physical_search_space,1),1);
+recomputed_phasors = zeros(size(square_phasors));
 for pos_idx=1:size(physical_search_space,1)
 	physical_est = physical_search_space(pos_idx,:);
 	for ii=1:size(anchor_positions,1)
