@@ -51,7 +51,7 @@ cur_iq_data = squeeze(data_iq(:,:,1,:));
 carrierSearch;
 %Loop through each timepoint
 for cur_timepoint=1:size(data_iq,2)
-
+    cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
 	harmonicExtraction;
     
     %keyboard;
