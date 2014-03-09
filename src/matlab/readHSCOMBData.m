@@ -1,4 +1,4 @@
-function ret = readHSCOMBData(file_name)
+function ret = readHSCOMBData(file_name, offset)
 
 fid = fopen(file_name,'r');
 data = fread(fid,'float');
@@ -10,7 +10,7 @@ data_iq = data(1:2:end) + 1i*data(2:2:end);
 restarts = find(data_iq == -32768-32768*1i);
 res_diff = diff(restarts);
 
-first_start_idx = restarts(find(res_diff >= 69046,1));
+first_start_idx = restarts(find(res_diff >= 69046,1))+offset;
 restarts = first_start_idx:69247:length(data_iq)-69247;
 
 %Get rid of switching frequency junk data

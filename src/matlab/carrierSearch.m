@@ -1,5 +1,5 @@
 %size(cur_iq_data) = [<num_anchors>, <num_freq_steps>, <num_samples_per_step>]
-carrier_segment = ceil(carrier_freq-(start_freq-sample_rate/2))/step_freq+1;
+carrier_segment = ceil(carrier_freq-start_freq)/step_freq+1;
 
 %Start by searching for the apparent carrier offset contained within the segment which contains it
 %The carrier isn't necessarily present because it gets attenuated by the COMB filter.
@@ -13,6 +13,8 @@ square_hi = square_freq*(1+square_accuracy);
 square_step = square_freq*square_measurement_precision;
 carrier_search = carrier_lo:carrier_step:carrier_hi;
 square_search = square_lo:square_step:square_hi;
+
+corr_tot = zeros(length(carrier_search), length(square_search));
 
 carrier_idx = 1;
 for carrier_est = carrier_search
@@ -37,6 +39,8 @@ end
 
 %Find max correlation
 [carrier_idx, square_idx] = find(corr_tot == max(max(corr_tot)));
+carrier_idx = carrier_idx(end);
+square_idx = square_idx(end);
 carrier_offset = carrier_search(carrier_idx);
 square_est = square_search(square_idx);
 
