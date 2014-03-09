@@ -19,5 +19,5 @@ end
 
 [est_max, est_max_idx] = max(est_likelihood);
 [est_x_idx, est_y_idx, est_z_idx] = ind2sub([length(x),length(y),length(z)],est_max_idx);
-est_position = physical_search_space(est_max_idx);
+est_position = physical_search_space(est_max_idx,:);
 est_likelihood = reshape(est_likelihood,[length(x),length(y),length(z)]);
