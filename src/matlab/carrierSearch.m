@@ -7,41 +7,70 @@ carrier_segment = ceil(carrier_freq-start_freq)/step_freq+1;
 
 carrier_lo = carrier_freq*(-carrier_accuracy);
 carrier_hi = carrier_freq*(carrier_accuracy);
-carrier_step = carrier_freq*carrier_measurement_precision;
-square_lo = square_freq*(1-square_accuracy);
-square_hi = square_freq*(1+square_accuracy);
-square_step = square_freq*square_measurement_precision;
-carrier_search = carrier_lo:carrier_step:carrier_hi;
-square_search = square_lo:square_step:square_hi;
+carrier_coarse_step = carrier_freq*carrier_coarse_measurement_precision;
+carrier_coarse_search = carrier_lo:carrier_coarse_step:carrier_hi;
 
-corr_tot = zeros(length(carrier_search), length(square_search));
+corr_max = 0;
+corr_max_idx = 1;
+cur_idx = 1;
+for carrier_est = carrier_coarse_search
+	cur_corr = 0;
+	for harmonic_num = -num_harmonics_present:2:num_harmonics_present
+		cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(square_freq*harmonic_num+carrier_est)/(sample_rate/decim_factor));
+		cur_bb = cur_bb .* squeeze(cur_iq_data(1,carrier_segment, :)).';
 
-carrier_idx = 1;
-for carrier_est = carrier_search
-	square_idx = 1;
-	for square_est = square_search
-		square_decim_freq = square_est;
+		cur_corr = cur_corr + abs(sum(cur_bb));
+	end
 
+	if(cur_corr > corr_max)
+		corr_max = cur_corr;
+		corr_max_idx = cur_idx;
+	end
+	cur_idx = cur_idx + 1;
+end
+
+%Perform gradient descent
+carrier_fine_step = carrier_freq*carrier_fine_measurement_precision;
+square_fine_step = square_freq*square_fine_measurement_precision;
+square_est = square_freq;
+carrier_est = carrier_coarse_search(corr_max_idx);
+step_sizes = [...
+	-carrier_fine_step, square_fine_step;...
+	0, square_fine_step;...
+	carrier_fine_step, square_fine_step;...
+	carrier_fine_step, 0;...
+	carrier_fine_step, -square_fine_step;...
+	0, -square_fine_step;...
+	-carrier_fine_step, -square_fine_step;...
+	-carrier_fine_step, 0;...
+];
+new_est = true;
+cur_corr_max = 0;
+while new_est
+	corr_max = 0;
+	for cur_step_idx = 1:size(step_sizes,1)
 		cur_corr = 0;
 		for harmonic_num = -num_harmonics_present:2:num_harmonics_present
-			cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(square_decim_freq*harmonic_num+carrier_est)/(sample_rate/decim_factor));
+			cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*((square_est+step_sizes(cur_step_idx,2))*harmonic_num+(carrier_est+step_sizes(cur_step_idx,1)))/(sample_rate/decim_factor));
 			cur_bb = cur_bb .* squeeze(cur_iq_data(1,carrier_segment, :)).';
-
+	
 			cur_corr = cur_corr + abs(sum(cur_bb));
 		end
 	
-		corr_tot(carrier_idx, square_idx) = cur_corr;
-		square_idx = square_idx + 1;
+		if(cur_corr > corr_max)
+			corr_max = cur_corr;
+			corr_max_idx = cur_step_idx;
+		end
 	end
-	carrier_est
-	carrier_idx = carrier_idx + 1;
+
+	if(corr_max > cur_corr_max)
+		cur_corr_max = corr_max;
+		carrier_est = carrier_est + step_sizes(corr_max_idx,1);
+		square_est = square_est + step_sizes(corr_max_idx,2);
+		new_est = true;
+	else
+		new_est = false;
+	end
 end
-
-%Find max correlation
-[carrier_idx, square_idx] = find(corr_tot == max(max(corr_tot)));
-carrier_idx = carrier_idx(end);
-square_idx = square_idx(end);
-carrier_offset = carrier_search(carrier_idx);
-square_est = square_search(square_idx);
-
-
+carrier_est
+square_est

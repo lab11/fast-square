@@ -11,9 +11,10 @@ decim_factor = 17;
 carrier_freq = 5.792e9;
 square_freq = 4e6;
 square_accuracy = 30e-6;
-square_measurement_precision = 1e-7;
+square_fine_measurement_precision = 1e-8;
 carrier_accuracy = 10e-6;
-carrier_measurement_precision = 1e-7;
+carrier_fine_measurement_precision = 1e-8;
+carrier_coarse_measurement_precision = 1e-7;
 
 anchor_positions = [...
 	0.8889, 0.0, 0.3579;...
@@ -34,7 +35,6 @@ data_iq = zeros(size(anchor_positions,1),size(cur_data_iq,1),smallest_num_timepo
 for ii=1:size(anchor_positions,1)
 	data_iq(ii,:,:,:) = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'], mod(ii-1,2)),-1);%TODO: Figure out why offset is necessary.  Probably something screwed up in Verilog...
 end
-keyboard;
 
 %Construct a candidate search space over which to look for the tag
 [x,y,z] = meshgrid(0:.05:4,0:.05:4,-2:.05:2);
@@ -47,11 +47,10 @@ for ii=1:size(harmonic_freqs,1)
 	harmonic_freqs(ii,:) = start_lo_freq+if_freq+(-num_harmonics_present:2:num_harmonics_present)*square_freq+step_freq*(ii-1);
 end
 
+cur_iq_data = squeeze(data_iq(:,:,1,:));
+carrierSearch;
 %Loop through each timepoint
 for cur_timepoint=1:size(data_iq,2)
-	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
-
-	carrierSearch;
 
 	harmonicExtraction;
     
