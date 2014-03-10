@@ -79,7 +79,6 @@ for precision = [coarse_precision,fine_precision]
 			new_est = false;
 		end
 	end
-	keyboard;
 end
 carrier_est
 square_est
