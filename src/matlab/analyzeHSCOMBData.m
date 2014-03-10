@@ -11,10 +11,9 @@ decim_factor = 17;
 carrier_freq = 5.792e9;
 square_freq = 4e6;
 square_accuracy = 30e-6;
-square_fine_measurement_precision = 1e-8;
 carrier_accuracy = 10e-6;
-carrier_fine_measurement_precision = 1e-8;
-carrier_coarse_measurement_precision = 1e-7;
+coarse_precision = 1e-7;
+fine_precision = 1e-8;
 
 anchor_positions = [...
 	0.8889, 0.0, 0.3579;...
@@ -48,10 +47,10 @@ for ii=1:size(harmonic_freqs,1)
 end
 
 cur_iq_data = squeeze(data_iq(:,:,1,:));
-carrierSearch;
 %Loop through each timepoint
 for cur_timepoint=1:size(data_iq,2)
-    cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
+	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
+	carrierSearch;
 	harmonicExtraction;
     
     %keyboard;
