@@ -39,6 +39,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
         # Parameters
         ##################################################
 	param_freq = 5.792e9
+	self.bbg=0
 	self.if_freq = 960e6
 	self.square_freq = 4e6
 	self.num_steps = 32
@@ -82,12 +83,14 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        self.source.set_subdev_spec("A:0 B:0")
 	        self.source.set_center_freq(self.if_freq, 0)
 	        self.source.set_gain(g.stop(), 0)
+		self.source.set_gain(self.bbg, "BBG", 0)
 	        self.source.set_bandwidth(64e6, 0)
 
 		#Channel 1
 		g = self.source.get_gain_range(1)
 	        self.source.set_center_freq(self.if_freq, 1) #Mixer @ 4992 MHz
 	        self.source.set_gain(g.stop(), 1)
+		self.source.set_gain(self.bbg, "BBG", 1)
 	        self.source.set_bandwidth(64e6, 1)
 
 	        self.source.set_samp_rate(samp_rate)
@@ -106,12 +109,14 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        self.source2.set_subdev_spec("A:0 B:0")
 	        self.source2.set_center_freq(self.if_freq, 0)
 	        self.source2.set_gain(g.stop(), 0)
+		self.source2.set_gain(self.bbg, "BBG", 0)
 	        self.source2.set_bandwidth(64e6, 0)
 
 		#Channel 1
 		g = self.source2.get_gain_range(1)
 	        self.source2.set_center_freq(self.if_freq, 1) #Mixer @ 4992 MHz
 	        self.source2.set_gain(g.stop(), 1)
+		self.source2.set_gain(self.bbg, "BBG", 1)
 	        self.source2.set_bandwidth(64e6, 1)
 
 	        self.source2.set_samp_rate(samp_rate)
