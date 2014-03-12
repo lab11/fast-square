@@ -90,7 +90,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        self.source.set_gain(g.stop(), 1)
 	        self.source.set_bandwidth(64e6, 1)
 
-	        self.source.set_samp_rate(samp_rate)
+		#self.source.set_samp_rate(samp_rate)
 
 	        self.source2 = uhd.usrp_source(
 	        	device_addr=address2,
@@ -114,7 +114,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        self.source2.set_gain(g.stop(), 1)
 	        self.source2.set_bandwidth(64e6, 1)
 
-	        self.source2.set_samp_rate(samp_rate)
+		#self.source2.set_samp_rate(samp_rate)
 
 
 	else:
@@ -155,9 +155,9 @@ if __name__ == '__main__':
         help="Set Default Frequency [default=%default]")
     parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(40),
         help="Set Default Gain [default=%default]")
-    parser.add_option("-a", "--address", dest="address", type="string", default="serial=7R24X9U1, fpga=usrp1_bb_comb.rbf",
+    parser.add_option("-a", "--address", dest="address", type="string", default="serial=9R24X1U1, fpga=usrp1_bb_comb.rbf",
         help="Set IP Address [default=%default]")
-    parser.add_option("--address2", dest="address2", type="string", default="serial=9R24X1U1, fpga=usrp1_bb_comb.rbf",
+    parser.add_option("--address2", dest="address2", type="string", default="serial=7R24X9U1, fpga=usrp1_bb_comb.rbf",
         help="Set IP Address [default=%default]")
     parser.add_option("--test", action="store_true", default=False,
         help="Feed with data from test file")
