@@ -11,7 +11,6 @@ module fast_square_controller(
 	output reg rx_record,
 	output reg rx_reset,
 	output reg rx_next,
-	input freq_step_reset_in,
 	output reg freq_step_out,
 	output [3:0] debug
 );
@@ -25,8 +24,9 @@ reg [15:0] record_count;
 reg next_freq_step;
 reg freq_step_count_incr;
 reg freq_step_count_reset;
-reg [19:0] state_wait_ctr;
+reg [27:0] state_wait_ctr;
 reg state_wait_incr;
+reg first_time;
 
 assign debug = 4'h0; //Not currently used...
 
@@ -37,22 +37,21 @@ always @(posedge clock) begin
 		freq_step_count <= 0;
 		record_count <= 0;
 		state_wait_ctr <= 0;
+		first_time <= 1'b1;
 	end else begin
 		freq_step_out <= next_freq_step;
 
-		if(freq_step_reset_in)
-			state <= `STATE_RESET;
-		else
-			state <= next_state;
+		state <= next_state;
 		
 		if(next_state != state)
 			state_wait_ctr <= 0;
 		else if(state_wait_incr)
-			state_wait_ctr <= state_wait_ctr + 20'd1;
+			state_wait_ctr <= state_wait_ctr + 28'd1;
 			
-		if(rx_record)
+		if(rx_record) begin
+			first_time <= 1'b0;
 			record_count <= record_count + 16'd1;
-		else
+		end else
 			record_count <= 16'd0;
 			
 		if(freq_step_count_incr)
@@ -76,14 +75,13 @@ case(state)
 		freq_step_count_reset = 1'b1;
 		rx_reset = 1'b1;
 		state_wait_incr = 1'b1;
-		if(state_wait_ctr == 20'hfffff)
+		if((first_time == 1'b1 && state_wait_ctr == 28'h3ffffff) || (first_time == 1'b0 && state_wait_ctr == 20'hfff))
 			next_state = `STATE_WAIT;
 	end
 
 	`STATE_WAIT: begin
 		state_wait_incr = 1'b1;
 		if(state_wait_ctr > 20'd640) begin
-			freq_step_count_incr = 1'b1;
 			next_state = `STATE_RECORD;
 		end
 	end
@@ -91,12 +89,8 @@ case(state)
 	`STATE_RECORD: begin
 		rx_record = 1'b1;
 		if(record_count == RECORD_TICKS) begin
-			if(freq_step_count == NUM_FREQ_STEPS+1)
-				next_state = `STATE_RESET;
-			else begin
-				rx_next = 1'b1;
-				next_state = `STATE_NEXT;
-			end
+			freq_step_count_incr = 1'b1;
+			next_state = `STATE_NEXT;
 		end
 	end
 
@@ -104,8 +98,14 @@ case(state)
 		state_wait_incr = 1'b1;
 		if(state_wait_ctr < 2'd10 || state_wait_ctr > 20'd20)
 			next_freq_step = 1'b1;
-		if(state_wait_ctr == 20'd30)
-			next_state = `STATE_WAIT;
+		if(state_wait_ctr == 20'd30) begin
+			if(freq_step_count == NUM_FREQ_STEPS)
+				next_state = `STATE_RESET;
+			else begin
+				rx_next = 1'b1;
+				next_state = `STATE_WAIT;
+			end
+		end
 	end
 	
 endcase
