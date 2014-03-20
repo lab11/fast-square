@@ -240,15 +240,20 @@ module usrp_std_hs_bb
        .serial_addr(serial_addr),.serial_data(serial_data),.serial_strobe(serial_strobe),
        .debugbus(rx_debugbus) );
    
+   wire fast_square_rx_reset;
+   wire fast_square_rx_next;
+   wire fast_square_rx_record;
+   wire ext_reset = rx_dsp_reset | ~io_rx_a[15];
  `ifdef RX_EN_0
    fast_square_bb_comb fsr0(
        .clock(clk64),
+       .ext_reset(ext_reset),
        .reset(fast_square_rx_reset),
        .freq_step(fast_square_rx_next),
        .record(fast_square_rx_record),
        .data_out_strobe(hb_strobe),
-       .i_in(ddc0_in_i),
-       .q_in(ddc0_in_q),
+       .i_in(ddc0_in_i),//{rx_a_a,4'd0}),
+       .q_in(ddc0_in_q),//{rx_b_a,4'd0}),
        .i_out(bb_rx_i0),
        .q_out(bb_rx_q0)
    );
@@ -261,16 +266,11 @@ module usrp_std_hs_bb
    parameter RECORD_TICKS_LOG2 = 16;
 	parameter NUM_FREQ_STEPS = 32;
    
-   wire fast_square_freq_step_reset;
    wire fast_square_freq_step;
-   wire fast_square_rx_record;
-   wire fast_square_rx_reset;
-   wire fast_square_rx_next;
    wire [3:0] fast_square_debug;
    fast_square_controller #(NUM_FREQ_STEPS,RECORD_TICKS) fsc(
        .clock(clk64),
-       .reset(rx_dsp_reset | ~io_rx_a[15]),
-       .freq_step_reset_in(fast_square_freq_step_reset),
+       .reset(ext_reset),
        .freq_step_out(fast_square_freq_step),
        .rx_reset(fast_square_rx_reset),
        .rx_next(fast_square_rx_next),
@@ -278,8 +278,10 @@ module usrp_std_hs_bb
        .debug(fast_square_debug)
    );
    assign io_rx_a[12] = fast_square_freq_step;
+   assign io_rx_a[13] = rx_dsp_reset;
    assign io_rx_a[14] = ~rx_dsp_reset;
-   debounce db0(.clk(clk64), .in(io_rx_a[13]), .out(fast_square_freq_step_reset));//TODO: Switch back to non-inverted once new boards come back
+   assign io_rx_a[15] = 1'bz;
+   //debounce db0(.clk(clk64), .in(io_rx_a[13]), .out(fast_square_freq_step_reset));//TODO: Switch back to non-inverted once new boards come back
    //assign FX2_2 = fast_square_freq_step;//OVERRUN
    //assign FX2_3 = fast_square_freq_step_reset;//UNDERRUN
 	
@@ -288,12 +290,13 @@ module usrp_std_hs_bb
 
    fast_square_bb_comb fsr1(
        .clock(clk64),
+       .ext_reset(ext_reset),
        .reset(fast_square_rx_reset),
        .freq_step(fast_square_rx_next),
        .record(fast_square_rx_record),
        .data_out_strobe(),
-       .i_in(ddc1_in_i),
-       .q_in(ddc1_in_q),
+       .i_in(ddc1_in_i),//{rx_a_b,4'd0}),
+       .q_in(ddc1_in_q),//{rx_b_b,4'd0}),
        .i_out(bb_rx_i1),
        .q_out(bb_rx_q1)
    );

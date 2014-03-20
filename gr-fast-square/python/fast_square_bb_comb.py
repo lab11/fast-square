@@ -40,7 +40,9 @@ class uhd_fft(grc_wxgui.top_block_gui):
         ##################################################
 	param_freq = 5.792e9
 	self.bbg=0
+	self.gc1=70
 	self.if_freq = 960e6
+	self.bw = 64e6
 	self.square_freq = 4e6
 	self.num_steps = 32
 	self.lo_start_freq = 5.312e9
@@ -82,18 +84,21 @@ class uhd_fft(grc_wxgui.top_block_gui):
 		print "rx gain range is (%f,%f)" % (g.start(),g.stop())
 	        self.source.set_subdev_spec("A:0 B:0")
 	        self.source.set_center_freq(self.if_freq, 0)
-	        self.source.set_gain(g.stop(), 0)
-		self.source.set_gain(self.bbg, "BBG", 0)
-	        self.source.set_bandwidth(64e6, 0)
+	        self.source.set_gain(gain, 0)
+		#self.source.set_antenna("RX2", 0)
+		#self.source.set_gain(self.bbg, "BBG", 0)
+		#self.source.set_gain(self.gc1, "GC1", 0)
+	        self.source.set_bandwidth(self.bw, 0)
 
 		#Channel 1
 		g = self.source.get_gain_range(1)
 	        self.source.set_center_freq(self.if_freq, 1) #Mixer @ 4992 MHz
-	        self.source.set_gain(g.stop(), 1)
-		self.source.set_gain(self.bbg, "BBG", 1)
-	        self.source.set_bandwidth(64e6, 1)
+	        self.source.set_gain(gain, 1)
+		#self.source.set_antenna("RX2", 1)
+		#self.source.set_gain(self.bbg, "BBG", 1)
+		#self.source.set_gain(self.gc1, "GC1", 1)
+	        self.source.set_bandwidth(self.bw, 1)
 
-		#self.source.set_samp_rate(samp_rate)
 
 	        self.source2 = uhd.usrp_source(
 	        	device_addr=address2,
@@ -108,18 +113,21 @@ class uhd_fft(grc_wxgui.top_block_gui):
 		print "rx gain range is (%f,%f)" % (g.start(),g.stop())
 	        self.source2.set_subdev_spec("A:0 B:0")
 	        self.source2.set_center_freq(self.if_freq, 0)
-	        self.source2.set_gain(g.stop(), 0)
-		self.source2.set_gain(self.bbg, "BBG", 0)
-	        self.source2.set_bandwidth(64e6, 0)
+	        self.source2.set_gain(gain, 0)
+		#self.source2.set_antenna("RX2", 0)
+		#self.source2.set_gain(self.bbg, "BBG", 0)
+		#self.source2.set_gain(self.gc1, "GC1", 0)
+	        self.source2.set_bandwidth(self.bw, 0)
 
 		#Channel 1
 		g = self.source2.get_gain_range(1)
 	        self.source2.set_center_freq(self.if_freq, 1) #Mixer @ 4992 MHz
-	        self.source2.set_gain(g.stop(), 1)
-		self.source2.set_gain(self.bbg, "BBG", 1)
-	        self.source2.set_bandwidth(64e6, 1)
+	        self.source2.set_gain(gain, 1)
+		#self.source2.set_antenna("RX2", 1)
+		#self.source2.set_gain(self.bbg, "BBG", 1)
+		#self.source2.set_gain(self.gc1, "GC1", 1)
+	        self.source2.set_bandwidth(self.bw, 1)
 
-		#self.source2.set_samp_rate(samp_rate)
 
 
 	else:
@@ -158,7 +166,7 @@ if __name__ == '__main__':
         help="Set Sample Rate [default=%default]")
     parser.add_option("-f", "--param-freq", dest="param_freq", type="eng_float", default=eng_notation.num_to_str(5.786666666667e9),
         help="Set Default Frequency [default=%default]")
-    parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(40),
+    parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(70),
         help="Set Default Gain [default=%default]")
     parser.add_option("-a", "--address", dest="address", type="string", default="serial=9R24X1U1, fpga=usrp1_bb_comb.rbf",
         help="Set IP Address [default=%default]")
