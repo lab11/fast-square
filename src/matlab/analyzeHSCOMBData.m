@@ -6,6 +6,7 @@ start_lo_freq = 5.312e9;
 if_freq = 960e6;
 start_freq = start_lo_freq + if_freq;
 step_freq = -32e6;
+num_steps = 32;
 sample_rate = 64e6;
 decim_factor = 17;
 carrier_freq = 5.792e9;
@@ -53,8 +54,10 @@ for cur_timepoint=1:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
 	carrierSearch;
 	harmonicExtraction;
-    
-	%keyboard;
+    correctCOMBPhase;
+    compensateStepTime;
+    compensateLOLength;
+	keyboard;
     
 	%harmonicCalibration;
 
@@ -65,6 +68,3 @@ for cur_timepoint=1:size(data_iq,3)
 	full_search_flag = false;
 end
 
-num_steps = 32;
-
-clear data data_iq data_iq_baseband
