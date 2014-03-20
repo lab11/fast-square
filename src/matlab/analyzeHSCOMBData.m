@@ -13,7 +13,7 @@ square_freq = 4e6;
 square_accuracy = 30e-6;
 carrier_accuracy = 10e-6;
 coarse_precision = 1e-7;
-fine_precision = 1e-8;
+fine_precision = 1e-9;
 
 anchor_positions = [...
 	0.8889, 0.0, 0.3579;...
@@ -25,14 +25,14 @@ anchor_positions = [...
 %TODO: May need to selectively read parts of files since this is pretty memory-intense
 smallest_num_timepoints = Inf;
 for ii=1:size(anchor_positions,1)
-	cur_data_iq = readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'], 0);
+	cur_data_iq = readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat']);
 	if(size(cur_data_iq,2) < smallest_num_timepoints)
 		smallest_num_timepoints = size(cur_data_iq,2);
 	end
 end
 data_iq = zeros(size(anchor_positions,1),size(cur_data_iq,1),smallest_num_timepoints,size(cur_data_iq,3));
 for ii=1:size(anchor_positions,1)
-	data_iq(ii,:,:,:) = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'], mod(ii-1,2)),-1);%TODO: Figure out why offset is necessary.  Probably something screwed up in Verilog...
+	data_iq(ii,:,:,:) = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat']),-1);%TODO: Figure out why offset is necessary.  Probably something screwed up in Verilog...
 end
 
 %Construct a candidate search space over which to look for the tag
@@ -47,21 +47,22 @@ for ii=1:size(harmonic_freqs,1)
 end
 
 cur_iq_data = squeeze(data_iq(:,:,1,:));
+full_search_flag = true;
 %Loop through each timepoint
 for cur_timepoint=1:size(data_iq,2)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
-	keyboard;
 	carrierSearch;
 	harmonicExtraction;
     
-    %keyboard;
+	keyboard;
     
-    %harmonicCalibration;
+	%harmonicCalibration;
 
-	harmonicLocalization;
+	%harmonicLocalization;
     
-    %keyboard;
-    save(['timestep',num2str(cur_timepoint)], 'est_likelihood', 'est_position', 'carrier_offset', 'square_est', 'square_phasors', 'phase_step');
+	%keyboard;
+	save(['timestep',num2str(cur_timepoint)], 'est_likelihood', 'est_position', 'carrier_offset', 'square_est', 'square_phasors', 'phase_step');
+	full_search_flag = false;
 end
 
 num_steps = 32;
