@@ -49,7 +49,7 @@ end
 cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 %Loop through each timepoint
-for cur_timepoint=1:size(data_iq,2)
+for cur_timepoint=1:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
 	carrierSearch;
 	harmonicExtraction;
@@ -61,7 +61,7 @@ for cur_timepoint=1:size(data_iq,2)
 	%harmonicLocalization;
     
 	%keyboard;
-	save(['timestep',num2str(cur_timepoint)], 'est_likelihood', 'est_position', 'carrier_offset', 'square_est', 'square_phasors', 'phase_step');
+	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors');
 	full_search_flag = false;
 end
 
