@@ -17,10 +17,11 @@ for cur_anchor_idx = 1:size(anchor_positions,1)
 			cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*harmonic_freq...
                 /(sample_rate/decim_factor)); %TODO: Review cur_freq_step addition
 			square_phasors(cur_anchor_idx,cur_freq_step,harmonic_idx) = sum(cur_bb .* squeeze(cur_iq_data(cur_anchor_idx,cur_freq_step, :)).');
-			harmonic_idx = harmonic_idx + 1;
 
 			bb_tot(cur_freq_step,:) = bb_tot(cur_freq_step,:) + conj(cur_bb);
             harmonic_freqs(cur_freq_step,harmonic_idx) = harmonic_freq;
+            
+			harmonic_idx = harmonic_idx + 1;
 		end
 	end
 end

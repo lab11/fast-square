@@ -57,7 +57,7 @@ for cur_timepoint=1:size(data_iq,3)
     correctCOMBPhase;
     compensateStepTime;
     compensateLOLength;
-	keyboard;
+	%keyboard;
     
 	%harmonicCalibration;
 
