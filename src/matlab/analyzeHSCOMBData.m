@@ -54,7 +54,7 @@ for cur_timepoint=1:size(data_iq,2)
 	carrierSearch;
 	harmonicExtraction;
     
-	keyboard;
+	%keyboard;
     
 	%harmonicCalibration;
 
