@@ -48,3 +48,20 @@ title('Single Differential Phase Measurement (Between anchors 1 and 2)');
 ylabel('Frequency Step');
 xlabel('Harmonic #');
 colorbar
+
+figure(5);
+phase_step_diffs = zeros(num_anchors,size(square_phasors,2)-1,size(square_phasors,3)/2,num_timepoints);
+for ii=1:num_timepoints
+	for jj=1:num_anchors
+		blah = squeeze(angle(square_phasors_all(jj,:,:,ii)));
+		blah2 = blah(2:32,5:8)-blah(1:31,1:4);
+		blah2(blah2 > pi) = blah2(blah2 > pi) - 2*pi;
+		blah2(blah2 < -pi) = blah2(blah2 < -pi) + 2*pi;
+		phase_step_diffs(jj,:,:,ii) = shiftdim(blah2,-1);
+	end
+end
+for ii=1:num_anchors
+	cur_phase_step_diffs = phase_step_diffs(ii,:,:,:);
+	subplot(2,2,ii);
+	hist(cur_phase_step_diffs(:),100);
+end
