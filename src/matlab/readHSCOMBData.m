@@ -26,5 +26,5 @@ data_segment_start_idxs = (restart_idxs + 240).';%Magic number for how many samp
 data_segment_idxs = repmat(data_segment_start_idxs,[32,1]) + repmat(((0:31).').*2099,[1,size(data_segment_start_idxs,2)]);
 
 ret = zeros(size(data_segment_idxs,1),max(restart_counter),1800);
-ret(:,restart_counter,:) = data_iq(repmat(data_segment_idxs,[1,1,1800])+repmat(shiftdim(1:1800,-1),[size(data_segment_idxs,1),size(data_segment_idxs,2),1]));
+ret(:,restart_counter,:) = data_iq(repmat(data_segment_idxs,[1,1,1800])+repmat(shiftdim(0:1799,-1),[size(data_segment_idxs,1),size(data_segment_idxs,2),1]));
 

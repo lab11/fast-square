@@ -9,8 +9,11 @@ for pos_idx=1:size(physical_search_space,1)
 	for ii=1:size(anchor_positions,1)
 		physical_distances(ii) = norm(physical_est-anchor_positions(ii,:));
 		recomputed_phasors(ii,:,:) = square_phasors(ii,:,:) .* shiftdim(exp(-1i*physical_distances(ii)*harmonic_freqs./3e8.*2*pi),-1)./abs(square_phasors(ii,:,:));
-	end
-	est_likelihood(pos_idx) = sum(sum(sum(recomputed_phasors,1),2));
+    end
+    %Bring all anchors to a common center harmonic phase
+    recomputed_phasors = recomputed_phasors.*repmat(exp(-1i*angle(recomputed_phasors(:,:,4))),[1,1,8]);
+	est_likelihood(pos_idx) = sum(sum(abs(sum(recomputed_phasors,1)),3));
+    %keyboard;
 	%disp(['cur_val = ', num2str(est_likelihood(pos_idx))])
 	if mod(pos_idx,10000) == 0
 		disp(['pos_idx = ', num2str(pos_idx)])

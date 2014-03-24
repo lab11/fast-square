@@ -33,7 +33,7 @@ for ii=1:size(anchor_positions,1)
 end
 data_iq = zeros(size(anchor_positions,1),size(cur_data_iq,1),smallest_num_timepoints,size(cur_data_iq,3));
 for ii=1:size(anchor_positions,1)
-	data_iq(ii,:,:,:) = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat']),-1);%TODO: Figure out why offset is necessary.  Probably something screwed up in Verilog...
+	data_iq(ii,:,:,:) = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat']));
 end
 
 %Construct a candidate search space over which to look for the tag
@@ -50,21 +50,22 @@ end
 cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 %Loop through each timepoint
-for cur_timepoint=1:size(data_iq,3)
+for cur_timepoint=2:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
 	carrierSearch;
 	harmonicExtraction;
     correctCOMBPhase;
+    compensateRCLP;
     compensateStepTime;
     compensateLOLength;
 	%keyboard;
     
 	%harmonicCalibration;
 
-	%harmonicLocalization;
+	harmonicLocalization;
     
 	%keyboard;
-	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors');
+	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'est_position', 'est_likelihood');
 	full_search_flag = false;
 end
 
