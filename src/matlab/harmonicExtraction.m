@@ -25,3 +25,8 @@ for cur_anchor_idx = 1:size(anchor_positions,1)
 		end
 	end
 end
+
+harmonic_freqs_abs = zeros(size(data_iq,2),num_harmonics_present+1);
+for ii=1:size(harmonic_freqs_abs,1)
+	harmonic_freqs_abs(ii,:) = harmonic_freqs(ii,:) + start_lo_freq + if_freq + step_freq*(ii-1);
+end

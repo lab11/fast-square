@@ -16,6 +16,10 @@ carrier_accuracy = 10e-6;
 coarse_precision = 1e-7;
 fine_precision = 1e-9;
 
+%Load calibration data
+%NOTE: Check to make sure calibration data is correct!
+load cal_diff_meas
+
 anchor_positions = [...
 	0.8889, 0.0, 0.3579;...
 	2.8938, 0.0, 0.3596;...
@@ -42,10 +46,6 @@ physical_search_space = [x(:),y(:),z(:)];
 
 %Figure out which harmonics are in each snapshot
 num_harmonics_present = floor((sample_rate-square_freq)/(square_freq*2));
-harmonic_freqs = zeros(size(data_iq,2),num_harmonics_present+1);
-for ii=1:size(harmonic_freqs,1)
-	harmonic_freqs(ii,:) = start_lo_freq+if_freq+(-num_harmonics_present:2:num_harmonics_present)*square_freq+step_freq*(ii-1);
-end
 
 cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
@@ -56,6 +56,7 @@ for cur_timepoint=2:size(data_iq,3)
 	harmonicExtraction;
     correctCOMBPhase;
     compensateRCLP;
+    compensateRCHP;
     compensateStepTime;
     compensateLOLength;
 	%keyboard;
