@@ -17,8 +17,9 @@ coarse_precision = 1e-7;
 fine_precision = 1e-9;
 
 %Load calibration data
-%NOTE: Check to make sure calibration data is correct!
-load cal_diff_meas
+load if_cal
+
+lo_lengths = [1.524;1.524;2.1336;2.1336];
 
 % %These are old anchor positions
 % anchor_positions = [...
@@ -46,7 +47,9 @@ for ii=1:size(anchor_positions,1)
 end
 data_iq = zeros(size(anchor_positions,1),size(cur_data_iq,1),smallest_num_timepoints,size(cur_data_iq,3));
 for ii=1:size(anchor_positions,1)
-	data_iq(ii,:,:,:) = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat']));
+    cur_data_iq = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat']));
+    data_iq(ii,:,:,:) = cur_data_iq(:,1:smallest_num_timepoints,:);
+
 end
 
 %Construct a candidate search space over which to look for the tag
@@ -73,8 +76,9 @@ for cur_timepoint=2:size(data_iq,3)
     compensateRCLP;
     compensateRCHP;
     compensateStepTime;
+    %processIFCal;
+    correctIFCal;
     compensateLOLength;
-	%keyboard;
     
 	%harmonicCalibration;
 

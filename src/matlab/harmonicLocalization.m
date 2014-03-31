@@ -1,7 +1,7 @@
 tic
 est_likelihood = zeros(size(physical_search_space,1),1);
 chunk_size = 10e3;
-harmonic_freqs_abs_rep = repmat(shiftdim(harmonic_freqs_abs,-2),[size(recomputed_phasors,1),chunk_size,1,1]);
+harmonic_freqs_abs_rep = repmat(shiftdim(harmonic_freqs_abs,-2),[size(anchor_positions,1),chunk_size,1,1]);
 %Perform localization operations, breaking up into chunks which are small enough
 for ii=1:chunk_size:size(physical_search_space,1)
     if ii+chunk_size < size(physical_search_space,1)
@@ -27,6 +27,11 @@ toc
 [est_x_idx, est_y_idx, est_z_idx] = ind2sub([length(x),length(y),length(z)],est_max_idx);
 est_position = physical_search_space(est_max_idx,:);
 est_likelihood = reshape(est_likelihood,[length(x),length(y),length(z)]);
+
+%Look at how phasors align at the 'known' tag location
+actual_ranges = [3.632;3.398;3.593;4.003];
+actual_phases = repmat(actual_ranges,[1,size(square_phasors,2),size(square_phasors,3)]).*repmat(shiftdim(harmonic_freqs_abs,-1),[size(anchor_positions,1),1,1])./3e8*2*pi;
+actual_recomputed = square_phasors.*exp(-1i*actual_phases);
 
 %keyboard;
 
