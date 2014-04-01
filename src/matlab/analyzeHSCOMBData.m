@@ -19,7 +19,11 @@ fine_precision = 1e-9;
 %Load calibration data
 load if_cal
 
+%Physical LO cable lengths
 lo_lengths = [1.524;1.524;2.1336;2.1336];
+%Apparent lengths are longer since light travels slower in cables
+%Velocity through CA-400: 85%
+lo_lengths = lo_lengths/0.85;
 
 % %These are old anchor positions
 % anchor_positions = [...
@@ -79,6 +83,7 @@ for cur_timepoint=2:size(data_iq,3)
     %processIFCal;
     correctIFCal;
     compensateLOLength;
+    %keyboard;
     
 	%harmonicCalibration;
 

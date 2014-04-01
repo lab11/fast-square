@@ -1,5 +1,8 @@
 %size(cur_iq_data) = [<num_anchors>, <num_freq_steps>, <num_samples_per_step>]
 carrier_segment = ceil(carrier_freq-start_freq)/step_freq+1;
+if(~(carrier_segment <= num_steps && carrier_segment > 0))
+    carrier_segment = 1;
+end
 
 %Start by searching for the apparent carrier offset contained within the segment which contains it
 %The carrier isn't necessarily present because it gets attenuated by the COMB filter.
