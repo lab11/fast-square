@@ -1,14 +1,18 @@
-num_timepoints = 213;
+num_timepoints = 91;%213;
 num_anchors = 4;
 
 square_phasors_all = zeros(num_anchors,32,8,num_timepoints);
 carrier_offset_all = zeros(num_timepoints,1);
 square_est_all = zeros(num_timepoints,1);
-for ii=1:num_timepoints
+est_likelihoods = zeros(81,81,81,num_timepoints);
+est_positions = zeros(num_timepoints,3);
+for ii=1:num_timepoints %Start at 2 because 1 tends to have alignment issues
 	load(['timestep', num2str(ii)]);
 	square_phasors_all(:,:,:,ii) = square_phasors;
 	carrier_offset_all(ii) = carrier_offset;
 	square_est_all(ii) = square_est;
+	est_likelihoods(:,:,:,ii) = est_likelihood;
+	est_positions(ii,:) = est_position;
 end
 figure(1);
 for ii=1:num_anchors
@@ -61,7 +65,46 @@ for ii=1:num_timepoints
 	end
 end
 for ii=1:num_anchors
-	cur_phase_step_diffs = phase_step_diffs(ii,:,:,:);
+	cur_phase_step_diffs = squeeze(phase_step_diffs(ii,:,2:3,:));
 	subplot(2,2,ii);
-	hist(cur_phase_step_diffs(:),100);
+	hist(cur_phase_step_diffs(:),1000);
+	xlim([-pi,pi]);
+end
+
+%Calculate differential phase measurements.  All measurements done with anchor 1
+figure(6);
+cal_diff_meas = zeros(num_anchors,1);
+for ii=2:num_anchors
+	blah = phase_step_diffs(ii,:,:,:)-phase_step_diffs(1,:,:,:);
+
+	%Determine most-populated bin
+	[n,x] = hist(blah(:),1000);
+	[s,i] = max(n);
+	blah_mode = x(i);
+	blah(blah > blah_mode+pi) = blah(blah > blah_mode+pi) - 2*pi;
+	blah(blah < blah_mode-pi) = blah(blah < blah_mode-pi) + 2*pi;
+	cal_diff_meas(ii) = median(blah(:));
+	subplot(2,2,ii);
+	hist(blah(:),1000);
+end
+save cal_diff_meas cal_diff_meas
+
+%Make a movie of sequential localization heat maps
+figure(7);
+clear F;
+est_likelihood_filename = 'est_likelihood.gif';
+est_likelihood_min = min(est_likelihoods(:));
+est_likelihood_max = max(est_likelihoods(:));
+for ii=2:num_timepoints
+	imagesc(est_likelihoods(:,:,40,ii),[est_likelihood_min,est_likelihood_max]);
+	text(2,5,[num2str(ii-2)]);
+	drawnow;
+	frame = getframe;
+	im = frame2im(frame);
+	[imind,cm] = rgb2ind(im,256);
+	if ii==2
+		imwrite(imind,cm,est_likelihood_filename,'gif','Loopcount',inf,'DelayTime',0.1);
+	else
+		imwrite(imind,cm,est_likelihood_filename,'gif','WriteMode','append','DelayTime',0.1);
+	end
 end
