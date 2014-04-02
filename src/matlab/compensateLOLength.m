@@ -5,5 +5,5 @@ square_phasors = square_phasors.*exp(-1i*repmat(lo_lengths,[1,size(square_phasor
 
 %For now, LO length compensation will be directly based on pre-calculated phase
 %differentials
-%load cal_diff_meas
-%square_phasors = square_phasors.*exp(-1i*repmat((0:31),[size(square_phasors,1),1,size(square_phasors,3)]).*repmat(cal_diff_meas,[1,size(square_phasors,2),size(square_phasors,3)]));
+load cal_diff_meas
+square_phasors = square_phasors.*exp(-1i*repmat((0:31),[size(square_phasors,1),1,size(square_phasors,3)]).*repmat(cal_diff_meas,[1,size(square_phasors,2),size(square_phasors,3)]));

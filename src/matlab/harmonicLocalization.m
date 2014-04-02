@@ -17,8 +17,9 @@ for ii=1:chunk_size:size(physical_search_space,1)
     recomputed_phasors = recomputed_phasors./abs(recomputed_phasors);
     
     recomputed_phasors = recomputed_phasors.*exp(-1i*repmat(physical_distances(:,ii:ii+cur_num_search-1),[1,1,size(recomputed_phasors,3),size(recomputed_phasors,4)]).*harmonic_freqs_abs_rep(:,1:cur_num_search,:,:)./3e8*2*pi);
+    recomputed_phasors = recomputed_phasors.*conj(repmat(recomputed_phasors(1,:,:,:),[4,1,1,1]));
     
-    est_likelihood(ii:ii+cur_num_search-1) = abs(sum(sum(abs(sum(recomputed_phasors,1)),3),4));
+    est_likelihood(ii:ii+cur_num_search-1) = abs(sum(sum(sum(recomputed_phasors,1),4),3));
     %keyboard;
 end
 toc

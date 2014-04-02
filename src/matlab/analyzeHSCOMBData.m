@@ -72,7 +72,7 @@ num_harmonics_present = floor((sample_rate-square_freq)/(square_freq*2));
 cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 %Loop through each timepoint
-for cur_timepoint=2:size(data_iq,3)
+for cur_timepoint=92:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
 	carrierSearch;
 	harmonicExtraction;
@@ -89,7 +89,7 @@ for cur_timepoint=2:size(data_iq,3)
 
 	harmonicLocalization;
     
-	%keyboard;
+	keyboard;
 	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'est_position', 'est_likelihood');
 	full_search_flag = false;
 end
