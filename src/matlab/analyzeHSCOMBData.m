@@ -40,6 +40,7 @@ anchor_positions = [...
     3.828, 0.0, 0.0;...
     0.0, 0.0, 0.0 ...
 ];
+num_anchors = size(anchor_positions,1);
 
 %TODO: May need to selectively read parts of files since this is pretty memory-intense
 smallest_num_timepoints = Inf;
@@ -89,7 +90,7 @@ for cur_timepoint=2:size(data_iq,3)
 
 	harmonicLocalization;
     
-	%keyboard;
+	keyboard;
 	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'est_position', 'est_likelihood');
 	full_search_flag = false;
 end
