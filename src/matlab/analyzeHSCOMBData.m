@@ -58,7 +58,7 @@ for ii=1:size(anchor_positions,1)
 end
 
 %Construct a candidate search space over which to look for the tag
-[x,y,z] = meshgrid(0:.05:4,0:.05:4,-2:.05:2);
+[x,y,z] = meshgrid(0:.05:4,0:.05:4,-.7);%-2:.05:2);
 physical_search_space = [x(:),y(:),z(:)];
 
 %Pre-calculate distances from each point on search space to corresponding
@@ -73,6 +73,7 @@ num_harmonics_present = floor((sample_rate-square_freq)/(square_freq*2));
 cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 %Loop through each timepoint
+tx_phasors = zeros(num_steps,num_harmonics_present+1);
 for cur_timepoint=2:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
 	carrierSearch;
@@ -84,14 +85,17 @@ for cur_timepoint=2:size(data_iq,3)
     %processIFCal;
     correctIFCal;
     compensateLOLength;
-    %keyboard;
+    %processDirectSquare;
+    deconvolveSquare;
+    keyboard;
     
 	%harmonicCalibration;
 
-	harmonicLocalization;
+	%harmonicLocalization_r3;
     
-	keyboard;
-	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'est_position', 'est_likelihood');
+	%keyboard;
+	%save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'est_position', 'est_likelihood');
 	full_search_flag = false;
+    disp(['done with timepoint ', num2str(cur_timepoint)])
 end
 

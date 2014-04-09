@@ -23,7 +23,7 @@ if(full_search_flag)
 		cur_corr = 0;
 		for harmonic_num = -num_harmonics_present:2:num_harmonics_present
 			cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(square_freq*harmonic_num+carrier_est)/(sample_rate/decim_factor));
-			cur_bb = cur_bb .* squeeze(cur_iq_data(2,carrier_segment, :)).';
+			cur_bb = cur_bb .* squeeze(cur_iq_data(4,carrier_segment, :)).';
 	
 			cur_corr = cur_corr + abs(sum(cur_bb));
 		end
@@ -53,7 +53,7 @@ if(full_search_flag)
 						carrier_est+...
 						(carrier_segment-cur_freq_step)*(step_freq-square_est)*(step_freq/square_freq)...
 					)/(sample_rate/decim_factor));
-				cur_bb = cur_bb .* squeeze(cur_iq_data(2,cur_freq_step, :)).';
+				cur_bb = cur_bb .* squeeze(cur_iq_data(4,cur_freq_step, :)).';
 		
 				cur_corr = cur_corr + abs(sum(cur_bb));
 			end
@@ -99,7 +99,7 @@ for precision = [coarse_precision,fine_precision]
 						(carrier_segment-cur_freq_step)*(step_freq-(square_est+step_sizes(cur_step_idx,2))*(step_freq/square_freq))...
 					)/(sample_rate/decim_factor));
 					bb_tot(cur_freq_step,:) = bb_tot(cur_freq_step,:) + conj(cur_bb);
-					cur_bb = cur_bb .* squeeze(cur_iq_data(2,cur_freq_step, :)).';
+					cur_bb = cur_bb .* squeeze(cur_iq_data(4,cur_freq_step, :)).';
 			
 					cur_corr = cur_corr + abs(sum(cur_bb));
 				end

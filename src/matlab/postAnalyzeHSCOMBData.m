@@ -1,4 +1,4 @@
-num_timepoints = 91;%213;
+num_timepoints = 213;
 num_anchors = 4;
 
 square_phasors_all = zeros(num_anchors,32,8,num_timepoints);
@@ -6,7 +6,7 @@ carrier_offset_all = zeros(num_timepoints,1);
 square_est_all = zeros(num_timepoints,1);
 est_likelihoods = zeros(81,81,81,num_timepoints);
 est_positions = zeros(num_timepoints,3);
-for ii=1:num_timepoints %Start at 2 because 1 tends to have alignment issues
+for ii=2:num_timepoints %Start at 2 because 1 tends to have alignment issues
 	load(['timestep', num2str(ii)]);
 	square_phasors_all(:,:,:,ii) = square_phasors;
 	carrier_offset_all(ii) = carrier_offset;
@@ -96,7 +96,14 @@ est_likelihood_filename = 'est_likelihood.gif';
 est_likelihood_min = min(est_likelihoods(:));
 est_likelihood_max = max(est_likelihoods(:));
 for ii=2:num_timepoints
-	imagesc(est_likelihoods(:,:,40,ii),[est_likelihood_min,est_likelihood_max]);
+    cur_est_slice = est_likelihoods(:,:,27,ii);
+    [~,max_idx] = max(cur_est_slice(:));
+    [est_x, est_y] = ind2sub(size(cur_est_slice),max_idx);
+	imagesc(est_likelihoods(:,:,27,ii));%,[est_likelihood_min,est_likelihood_max]);
+    hold on;
+    plot(est_y, est_x, 'o');
+    hold off;
+    
 	text(2,5,[num2str(ii-2)]);
 	drawnow;
 	frame = getframe;
