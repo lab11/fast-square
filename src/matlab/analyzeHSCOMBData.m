@@ -58,7 +58,7 @@ for ii=1:size(anchor_positions,1)
 end
 
 %Construct a candidate search space over which to look for the tag
-[x,y,z] = meshgrid(0:.05:4,0:.05:4,-.7);%-2:.05:2);
+[x,y,z] = meshgrid(0:.05:4,0:.05:4,-.65);%-2:.05:2);
 physical_search_space = [x(:),y(:),z(:)];
 
 %Pre-calculate distances from each point on search space to corresponding
@@ -74,9 +74,12 @@ cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 %Loop through each timepoint
 tx_phasors = zeros(num_steps,num_harmonics_present+1);
+temp_to_tx = zeros(32,8,size(data_iq,3));
 for cur_timepoint=2:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
-	carrierSearch;
+	%if cur_timepoint == 2 
+        carrierSearch2;
+    %end
 	harmonicExtraction;
     correctCOMBPhase;
     compensateRCLP;
@@ -85,13 +88,18 @@ for cur_timepoint=2:size(data_iq,3)
     %processIFCal;
     correctIFCal;
     compensateLOLength;
-    %processDirectSquare;
-    deconvolveSquare;
-    keyboard;
+    %compensateMovement;
+    processDirectSquare;
+    temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
+    blah = squeeze(cur_iq_data(4,16,:)).*exp(-1i*2*pi*carrier_est*(0:size(cur_iq_data,3)-1)/(sample_rate/decim_factor)).';
+    plot(angle(blah))
+    drawnow
+    %deconvolveSquare;
+    %keyboard;
     
 	%harmonicCalibration;
 
-	%harmonicLocalization_r3;
+	%harmonicLocalization_r4;
     
 	%keyboard;
 	%save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'est_position', 'est_likelihood');

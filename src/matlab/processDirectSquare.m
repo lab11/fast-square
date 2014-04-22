@@ -3,7 +3,8 @@ square_phasors_norm = square_phasors./abs(square_phasors);
 tx_phasors_norm = tx_phasors./abs(tx_phasors);
 max_corr = 0;
 max_corr_delay = 1;
-for time_delay=0:1/square_freq/1000:1/square_freq
+max_corr_offset = 0;
+for time_delay=0:1/square_freq/5000:1/square_freq
     temp_phasors = squeeze(square_phasors_norm(4,:,:)).*exp(1i*time_delay*harmonic_freqs_abs.*(2*pi));
     cur_corr = abs(sum(sum(temp_phasors.*conj(tx_phasors_norm))));
     cur_offset = angle(sum(sum(temp_phasors.*conj(tx_phasors_norm))));
@@ -16,6 +17,6 @@ end
 
 temp_phasors = squeeze(square_phasors(4,:,:)).*exp(1i*max_corr_delay*harmonic_freqs_abs.*(2*pi));
 temp_phasors = temp_phasors.*exp(-1i*max_corr_offset);
-keyboard;
+%keyboard;
 
 tx_phasors = tx_phasors + temp_phasors;

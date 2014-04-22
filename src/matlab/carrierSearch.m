@@ -66,14 +66,14 @@ if(full_search_flag)
 		cur_idx = cur_idx + 1;
 	end
 	
-	square_est = square_coarse_search(square_corr_max_idx);;
+	square_est = square_coarse_search(square_corr_max_idx);
 	carrier_est = carrier_coarse_search(carrier_corr_max_idx);
 end
 
 %Perform gradient descent
 for precision = [coarse_precision,fine_precision]
-	carrier_step = carrier_freq*fine_precision;
-	square_step = square_freq*precision;
+	carrier_step = carrier_freq*fine_precision/10;
+	square_step = square_freq*precision/2;
 	step_sizes = [...
 		-carrier_step, square_step;...
 		0, square_step;...
@@ -113,8 +113,8 @@ for precision = [coarse_precision,fine_precision]
 	
 		if(corr_max > cur_corr_max)
 			cur_corr_max = corr_max;
-			carrier_est = carrier_est + step_sizes(corr_max_idx,1)
-			square_est = square_est + step_sizes(corr_max_idx,2)
+			carrier_est = carrier_est + step_sizes(corr_max_idx,1);
+			square_est = square_est + step_sizes(corr_max_idx,2);
 			new_est = true;
 		else
 			new_est = false;
