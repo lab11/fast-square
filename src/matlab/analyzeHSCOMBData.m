@@ -80,9 +80,11 @@ time_offset_maxs = [];
 square_ests = [];
 for cur_timepoint=2:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
-    carrierSearch2;
+    if cur_timepoint == 2
+        carrierSearch2;
 %     square_ests = [square_ests,square_est];
 %     time_offset_maxs = [time_offset_maxs,time_offset_max];
+    end
 	harmonicExtraction;
     correctCOMBPhase;
     compensateRCLP;

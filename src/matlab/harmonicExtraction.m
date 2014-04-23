@@ -5,8 +5,8 @@ bb_tot = zeros(size(cur_data_iq,1),size(cur_data_iq,3));
 harmonic_freqs = zeros(size(cur_data_iq,1),num_harmonics_present+1);
 
 %Extract amplitude, phase measurements from entire dataset
-square_snr = 0;
-square_snr_count = 0;
+square_noise = 0;
+square_noise_count = 0;
 square_phasors = zeros(size(anchor_positions,1),size(cur_iq_data,2),(num_harmonics_present+1));
 for cur_anchor_idx = 1:size(anchor_positions,1)
 	for cur_freq_step = 1:size(cur_iq_data,2)
@@ -22,8 +22,8 @@ for cur_anchor_idx = 1:size(anchor_positions,1)
             
             %Get next bin to determine SNR
             cur_bb = cur_bb.*exp(1i*(0:size(cur_iq_data,3)-1)*2*pi/size(cur_iq_data,3));
-            square_snr = square_snr + abs(sum(cur_bb.*squeeze(cur_iq_data(cur_anchor_idx,cur_freq_step,:)).'));
-            square_snr_count = square_snr_count + 1;
+            square_noise = square_noise + abs(sum(cur_bb.*squeeze(cur_iq_data(cur_anchor_idx,cur_freq_step,:)).'));
+            square_noise_count = square_noise_count + 1;
 
 			bb_tot(cur_freq_step,:) = bb_tot(cur_freq_step,:) + conj(cur_bb);
             harmonic_freqs(cur_freq_step,harmonic_idx) = harmonic_freq;
@@ -33,7 +33,7 @@ for cur_anchor_idx = 1:size(anchor_positions,1)
 	end
 end
 
-square_snr = square_snr / square_snr_count;
+square_noise = square_noise / square_noise_count;
 
 harmonic_freqs_abs = zeros(size(data_iq,2),num_harmonics_present+1);
 for ii=1:size(harmonic_freqs_abs,1)
