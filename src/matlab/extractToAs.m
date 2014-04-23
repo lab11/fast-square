@@ -19,7 +19,7 @@ for ii=1:num_timepoints
     imp_fft = iq_fft(:,:,ii).*repmat(shiftdim(ham,-1),[num_antennas,1])./repmat(shiftdim(actual_fft,-1),[num_antennas,1]);
     
     %zero-pad
-    imp_fft = [imp_fft(:,1:ceil(size(imp_fft,2)/2));zeros(INTERP*size(imp_fft,2),size(imp_fft,1));imp_fft(:,ceil(size(imp_fft,2)/2)+1:end)];
+    imp_fft = [imp_fft(:,1:ceil(size(imp_fft,2)/2)),zeros(size(imp_fft,1),INTERP*size(imp_fft,2)),imp_fft(:,ceil(size(imp_fft,2)/2)+1:end)];
     imp = ifft(imp_fft,[],2);
    
     %Find maxes for normalization

@@ -97,11 +97,12 @@ for cur_timepoint=2:size(data_iq,3)
 %     processDirectSquare;
 %     temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
     deconvolveSquare;
-    keyboard;
+    %keyboard;
     
 	%harmonicCalibration;
 
-	%harmonicLocalization_r4;
+	harmonicLocalization_r5;
+    keyboard;
     
 	%keyboard;
 	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'time_offset_max');%'est_position', 'est_likelihood', 'time_offset_max');
