@@ -1,5 +1,6 @@
 RECORD_TICKS = 35000;
 total_ticks = RECORD_TICKS + 1 + 642 + 31;
+ticks_per_sequence = 4096+total_ticks*32;
 
 %Define constantsf for this implementation
 start_lo_freq = 5.312e9;
@@ -75,11 +76,13 @@ full_search_flag = true;
 %Loop through each timepoint
 tx_phasors = zeros(num_steps,num_harmonics_present+1);
 temp_to_tx = zeros(32,8,size(data_iq,3));
+time_offset_maxs = [];
+square_ests = [];
 for cur_timepoint=2:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
-	%if cur_timepoint == 2 
-        carrierSearch2;
-    %end
+    carrierSearch2;
+%     square_ests = [square_ests,square_est];
+%     time_offset_maxs = [time_offset_maxs,time_offset_max];
 	harmonicExtraction;
     correctCOMBPhase;
     compensateRCLP;
@@ -89,20 +92,17 @@ for cur_timepoint=2:size(data_iq,3)
     correctIFCal;
     compensateLOLength;
     %compensateMovement;
-    processDirectSquare;
-    temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
-    blah = squeeze(cur_iq_data(4,16,:)).*exp(-1i*2*pi*carrier_est*(0:size(cur_iq_data,3)-1)/(sample_rate/decim_factor)).';
-    plot(angle(blah))
-    drawnow
-    %deconvolveSquare;
-    %keyboard;
+%     processDirectSquare;
+%     temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
+    deconvolveSquare;
+    keyboard;
     
 	%harmonicCalibration;
 
 	%harmonicLocalization_r4;
     
 	%keyboard;
-	%save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'est_position', 'est_likelihood');
+	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'time_offset_max');%'est_position', 'est_likelihood', 'time_offset_max');
 	full_search_flag = false;
     disp(['done with timepoint ', num2str(cur_timepoint)])
 end
