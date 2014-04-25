@@ -29,8 +29,10 @@ for ii=1:num_timepoints
 
     %Find peak of first impulse and see if we need to rotate
     toa1 = find(abs(imp(1,:)) > THRESH,1);
-    if(toa1 == 1)
-        imp = circshift(imp,[0,floor(size(imp,1)/2)]);
+    num_backsearch = floor(size(imp,2))/4;
+    start_idx = toa1-num_backsearch+1;
+    if(start_idx < 1)
+        imp = circshift(imp,[0,floor(size(imp,2)/4)]);
     end
     for jj=1:num_antennas
         imp_toas(jj,ii) = find(abs(imp(jj,:)) > THRESH,1);

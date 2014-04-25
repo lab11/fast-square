@@ -188,7 +188,7 @@ end
 %Correct square_est based on time_offset_max
 square_est = square_est/((ticks_per_sequence/sample_rate)/((ticks_per_sequence/sample_rate)+time_offset_max/2/pi/square_est));
 
-% carrier_step = carrier_freq*fine_precision/10;
+ carrier_step = carrier_freq*fine_precision/10;
 % new_est = true;
 % cur_corr_max = 0;
 % step_sizes = [...
