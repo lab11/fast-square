@@ -46,4 +46,9 @@ while new_est
     else
         new_est = false;
     end
+    
+    if(sum(est_position.^2) > 10)
+        est_position = [0, 0, 0];
+        break;
+    end
 end

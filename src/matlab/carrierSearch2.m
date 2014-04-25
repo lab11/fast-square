@@ -70,39 +70,6 @@ if(full_search_flag)
 	carrier_est = carrier_coarse_search(carrier_corr_max_idx);
 end
 
-%Perform gradient descent
-carrier_step = carrier_freq*fine_precision/10;
-new_est = true;
-cur_corr_max = 0;
-step_sizes = [...
-		carrier_step, 0;...
-		-carrier_step, 0;...
-	];
-while new_est
-    corr_max = 0;
-    for cur_step_idx = 1:size(step_sizes,1)
-        cur_freq_step = carrier_segment;
-        cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(...
-            (carrier_est+step_sizes(cur_step_idx,1))...
-        )/(sample_rate/decim_factor));
-        cur_bb = cur_bb .* squeeze(cur_iq_data(4,carrier_segment, :)).';
-
-        cur_corr = sum(abs(fft(cur_bb))+abs(fft(conj(cur_bb))));
-
-        if(cur_corr > corr_max)
-            corr_max = cur_corr;
-            corr_max_idx = cur_step_idx;
-        end
-    end
-
-    if(corr_max > cur_corr_max)
-        cur_corr_max = corr_max;
-        carrier_est = carrier_est + step_sizes(corr_max_idx,1);
-        new_est = true;
-    else
-        new_est = false;
-    end
-end
 
 % square_step = square_freq*fine_precision/10;
 % new_est = true;
@@ -220,6 +187,77 @@ end
 
 %Correct square_est based on time_offset_max
 square_est = square_est/((ticks_per_sequence/sample_rate)/((ticks_per_sequence/sample_rate)+time_offset_max/2/pi/square_est));
+
+% carrier_step = carrier_freq*fine_precision/10;
+% new_est = true;
+% cur_corr_max = 0;
+% step_sizes = [...
+% 		carrier_step, 0;...
+% 		-carrier_step, 0;...
+% 	];
+% while new_est
+%     corr_max = 0;
+%     for cur_step_idx = 1:size(step_sizes,1)
+%         cur_freq_step = carrier_segment;
+%         cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(...
+%             (carrier_est+step_sizes(cur_step_idx,1))...
+%         )/(sample_rate/decim_factor));
+%         cur_bb = cur_bb .* squeeze(cur_iq_data(4,carrier_segment, :)).';
+% 
+%         cur_corr = sum(abs(fft(cur_bb))+abs(fft(conj(cur_bb))));
+% 
+%         if(cur_corr > corr_max)
+%             corr_max = cur_corr;
+%             corr_max_idx = cur_step_idx;
+%         end
+%     end
+% 
+%     if(corr_max > cur_corr_max)
+%         cur_corr_max = corr_max;
+%         carrier_est = carrier_est + step_sizes(corr_max_idx,1);
+%         new_est = true;
+%     else
+%         new_est = false;
+%     end
+% end
+
+%Perform gradient descent for carrier search
+new_est = true;
+cur_corr_max = 0;
+step_sizes = [...
+    carrier_step, 0;...
+    -carrier_step, 0;...
+];
+while new_est
+    corr_max = 0;
+    for cur_step_idx = 1:size(step_sizes,1)
+        cur_corr = 0;
+        for harmonic_num = -num_harmonics_present:2:num_harmonics_present
+            cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(...
+                (square_est+step_sizes(cur_step_idx,2))*harmonic_num+...
+                (carrier_est+step_sizes(cur_step_idx,1))...
+            )/(sample_rate/decim_factor));
+            cur_bb = cur_bb .* squeeze(cur_iq_data(4,carrier_segment, :)).';
+
+            cur_corr = cur_corr + abs(sum(cur_bb));
+        end
+
+        if(cur_corr > corr_max)
+            corr_max = cur_corr;
+            corr_max_idx = cur_step_idx;
+        end
+    end
+
+    if(corr_max > cur_corr_max)
+        cur_corr_max = corr_max;
+        carrier_est = carrier_est + step_sizes(corr_max_idx,1);
+        square_est = square_est + step_sizes(corr_max_idx,2);
+        new_est = true;
+    else
+        new_est = false;
+    end
+end
+
 
 carrier_offset = carrier_est;
 time_offset_max

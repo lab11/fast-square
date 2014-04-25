@@ -80,11 +80,11 @@ time_offset_maxs = [];
 square_ests = [];
 for cur_timepoint=2:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
-    if cur_timepoint == 2
+    %if cur_timepoint == 2
         carrierSearch2;
 %     square_ests = [square_ests,square_est];
 %     time_offset_maxs = [time_offset_maxs,time_offset_max];
-    end
+    %end
 	harmonicExtraction;
     correctCOMBPhase;
     compensateRCLP;
@@ -102,10 +102,10 @@ for cur_timepoint=2:size(data_iq,3)
 	%harmonicCalibration;
 
 	harmonicLocalization_r5;
-    keyboard;
+    %keyboard;
     
 	%keyboard;
-	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'time_offset_max');%'est_position', 'est_likelihood', 'time_offset_max');
+	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'time_offset_max', 'est_position', 'imp_toas');%, 'est_likelihood', 'time_offset_max');
 	full_search_flag = false;
     disp(['done with timepoint ', num2str(cur_timepoint)])
 end
