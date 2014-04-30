@@ -2,6 +2,8 @@ RECORD_TICKS = 35000;
 total_ticks = RECORD_TICKS + 1 + 642 + 31;
 ticks_per_sequence = 4096+total_ticks*32;
 
+NUM_HIST = 10;
+
 %Define constantsf for this implementation
 start_lo_freq = 5.312e9;
 if_freq = 960e6;
@@ -80,11 +82,18 @@ time_offset_maxs = [];
 square_ests = [];
 for cur_timepoint=2:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
-    %if cur_timepoint == 2
-        carrierSearch2;
+    carrierSearch2;
+    if cur_timepoint == 2
+        carrier_est_history = repmat(carrier_est,[NUM_HIST,1]);
+        square_est_history = repmat(square_est,[NUM_HIST,1]);
+    else
+        carrier_est_history = [carrier_est_history(2:NUM_HIST);carrier_est];
+        square_est_history = [square_est_history(2:NUM_HIST);square_est];
+    end
+    square_est = mean(square_est_history);
+    carrier_est = mean(carrier_est_history);
 %     square_ests = [square_ests,square_est];
 %     time_offset_maxs = [time_offset_maxs,time_offset_max];
-    %end
 	harmonicExtraction;
     correctCOMBPhase;
     compensateRCLP;

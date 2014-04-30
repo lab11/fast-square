@@ -23,20 +23,36 @@ for ii=1:num_timepoints
     imp = ifft(imp_fft,[],2);
    
     %Find maxes for normalization
-    imp_maxes = max(imp,[],2);
+    [imp_maxes, imp_max_idxs] = max(imp,[],2);
     imp = imp./repmat(imp_maxes,[1,size(imp,2)]);
     %keyboard;
+    
+    %Shift everything to the right as far as the latest max peak
+    last_peak = max(imp_max_idxs);
+    if(last_peak > 3*size(imp,2)/4)
+        imp = circshift(imp,[0,-floor(size(imp,2)/4)]);
+        [~, imp_max_idxs] = max(imp,[],2);
+        last_peak = max(imp_max_idxs);
+    end
+    imp = circshift(imp,[0,size(imp,2)-last_peak]);
 
     %Find peak of first impulse and see if we need to rotate
-    toa1 = find(abs(imp(1,:)) > THRESH,1);
-    num_backsearch = floor(size(imp,2))/4;
-    start_idx = toa1-num_backsearch+1;
-    if(start_idx < 1)
-        imp = circshift(imp,[0,floor(size(imp,2)/4)]);
-    end
     for jj=1:num_antennas
-        imp_toas(jj,ii) = find(abs(imp(jj,:)) > THRESH,1);
+        gt_thresh = find(abs(imp(jj,:)) > THRESH);
+        gt_thresh_diff = diff(gt_thresh);
+        [~,gt_thresh_diff_max] = max(gt_thresh_diff);
+        imp_toas(jj,ii) = gt_thresh(gt_thresh_diff_max+1);
     end
+    %keyboard;
+    
+%     num_backsearch = floor(size(imp,2))/4;
+%     start_idx = toa1-num_backsearch+1;
+%     if(start_idx < 1)
+%         imp = circshift(imp,[0,floor(size(imp,2)/4)]);
+%     end
+%     for jj=1:num_antennas
+%         imp_toas(jj,ii) = find(abs(imp(jj,:)) > THRESH,1);
+%     end
     %ii
 end
 
