@@ -2,11 +2,13 @@
 % localization system if they are all constrained to the same plane (e.g.
 % situated on the ceiling)
 
+c = 299792458;
+
 num_anchors = 4;
 anchor_height = 2;
 anchor_area_side = 2;
-num_trials = 1e3;
-noise_amp = 0.01;
+num_trials = 10e3;
+noise_amp = 0.001;
 step_size = 0.05;
 
 round = 2;
@@ -14,13 +16,13 @@ if round == 2
     load best_mse
 else
     best_anchor_positions = zeros(num_anchors,3);
-    best_mse = Inf;
 end
+best_mse = Inf;
 
 real_pos = [0,0,0];
 while true
     if round == 2
-        cand_anchor_pos = best_anchor_positions + [rand(num_anchors,2)*step_size,zeros(num_anchors,1)];
+        cand_anchor_pos = best_anchor_positions + [randn(num_anchors,2)*step_size,zeros(num_anchors,1)];
         cand_anchor_pos(:,1:2) = min(cand_anchor_pos(:,1:2),anchor_area_side/2);
         cand_anchor_pos(:,1:2) = max(cand_anchor_pos(:,1:2),-anchor_area_side/2);
     else
@@ -31,12 +33,12 @@ while true
     
     %Perform monte carlo simulation with noisy toas
     cand_position_errors = zeros(num_trials,1);
-    toa_errors = PermsRep([-noise_amp,0,noise_amp],num_anchors);
+    toa_errors = randn(num_trials,num_anchors)*noise_amp;
     for ii=1:size(toa_errors,1)
         cur_toas = cand_toas + toa_errors(ii,:).';
-        est_position = localizeTDoA(cand_anchor_pos, cur_toas, real_pos, 0.001);
-        cand_position_errors(ii) = sqrt(sum((est_position-real_pos).^2));
-        ii
+        est_position = TDOALoc4(cand_anchor_pos,cur_toas/c*1e9);%localizeTDoA(cand_anchor_pos, cur_toas, real_pos, 0.001);
+        cand_position_errors(ii) = min(sqrt(sum((real(est_position)-repmat(real_pos,[2,1])).^2)));
+        %ii
     end
     
     cur_mse = mean(cand_position_errors.^2)

@@ -23,7 +23,8 @@ fine_precision = 1e-9;
 load if_cal
 
 %Physical LO cable lengths
-lo_lengths = [1.524;1.524;2.1336;2.1336];
+%lo_lengths = [1.524;1.524;2.1336;2.1336];
+lo_lengths = [5.1816;1.524;2.1336;2.1336]; %New LO legths
 %Apparent lengths are longer since light travels slower in cables
 %Velocity through CA-400: 85%
 lo_lengths = lo_lengths/0.85;
@@ -36,12 +37,21 @@ lo_lengths = lo_lengths/0.85;
 % 	0.0, 0.0, 0.0 ...
 % ];
 
-%These are the new anchor positions
+% %These are the anchor positions in second placement -- coplanar along south wall
+% anchor_positions = [...
+%     0.890, 0.0, 0.3515;...
+%     2.890, 0.0, 0.3515;...
+%     3.828, 0.0, 0.0;...
+%     0.0, 0.0, 0.0 ...
+% ];
+
+%These are the anchor positions in the third placement -- more spaced out
+%in y and z directions
 anchor_positions = [...
-    0.890, 0.0, 0.3515;...
-    2.890, 0.0, 0.3515;...
-    3.828, 0.0, 0.0;...
-    0.0, 0.0, 0.0 ...
+    2.405, 3.815, 2.992;...
+    2.105, 0.034, 2.494;...
+    4.108, 0.347, 1.543;...
+    0.273, 0.343, 1.56 ...
 ];
 num_anchors = size(anchor_positions,1);
 
@@ -82,6 +92,12 @@ time_offset_maxs = [];
 square_ests = [];
 for cur_timepoint=2:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
+    %Detect overflow issues
+    overflow_sum = sum(abs(cur_iq_data),3);
+    if find(overflow_sum == 0)
+        continue
+    end
+    
     carrierSearch2;
     if cur_timepoint == 2
         carrier_est_history = repmat(carrier_est,[NUM_HIST,1]);
@@ -114,7 +130,7 @@ for cur_timepoint=2:size(data_iq,3)
     %keyboard;
     
 	%keyboard;
-	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'time_offset_max', 'est_position', 'imp_toas');%, 'est_likelihood', 'time_offset_max');
+	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
 	full_search_flag = false;
     disp(['done with timepoint ', num2str(cur_timepoint)])
 end

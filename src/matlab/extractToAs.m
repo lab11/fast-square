@@ -1,7 +1,7 @@
 function [imp_toas, imp] = extractToAs(iq_fft, actual_fft, skip_windowing)
 
 INTERP = 64;
-THRESH = 0.3;
+THRESH = 0.5;
 
 num_antennas = size(iq_fft,1);
 num_timepoints = size(iq_fft,3);

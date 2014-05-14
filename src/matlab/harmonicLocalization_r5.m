@@ -19,6 +19,9 @@ tx_phasors = [tx_phasors(67:end);tx_phasors(1:66)];
 %Convert imp_toas to meters
 imp_toas = imp_toas/(2*square_est*size(square_phasors_reshaped,2))/INTERP*3e8;
 
+load anchor_errors
+imp_toas = imp_toas - anchor_errors;
+
 %Iteratively minimize the MSE between the position estimate and all TDoA
 %measurements
 est_position = [0,0,0];
