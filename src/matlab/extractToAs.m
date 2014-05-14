@@ -39,9 +39,11 @@ for ii=1:num_timepoints
     %Find peak of first impulse and see if we need to rotate
     for jj=1:num_antennas
         gt_thresh = find(abs(imp(jj,:)) > THRESH);
+        gt_thresh = [0, gt_thresh];
         gt_thresh_diff = diff(gt_thresh);
         [~,gt_thresh_diff_max] = max(gt_thresh_diff);
         imp_toas(jj,ii) = gt_thresh(gt_thresh_diff_max+1);
+	keyboard;
     end
     %keyboard;
     
