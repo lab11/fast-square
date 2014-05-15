@@ -153,40 +153,40 @@ while new_est
     end
 end
 
-%Compare with the next timestep to see how far off the square frequency's
-%estimate is
-next_iq_data = squeeze(data_iq(:,:,cur_timepoint+1,:));
-cur_phasors = zeros(num_harmonics_present+1,1);
-next_phasors = zeros(num_harmonics_present+1,1);
-harmonic_idx = 1;
-for harmonic_num = -num_harmonics_present:2:num_harmonics_present
-    cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(...
-        square_est*harmonic_num+...
-        carrier_est...
-    )/(sample_rate/decim_factor));
-    cur_phasors(harmonic_idx) = sum(cur_bb.*squeeze(cur_iq_data(4,carrier_segment,:)).');
-    next_phasors(harmonic_idx) = sum(cur_bb.*squeeze(next_iq_data(4,carrier_segment,:)).');
-    
-    %Add time delay to current_phasors in order to compare with next_phasors
-    cur_phasors(harmonic_idx) = cur_phasors(harmonic_idx).*exp(1i*2*pi*(square_est*harmonic_num+carrier_est)/(sample_rate/decim_factor)*(ticks_per_sequence/decim_factor));
-    
-    harmonic_idx = harmonic_idx + 1;
-end
-corr_max = 0;
-for phase_offset = -pi:0.1:pi
-    for time_offset = -pi/2:0.001:pi/2
-        cur_phasors_temp = cur_phasors.*exp(1i*phase_offset).*exp(1i*(-num_harmonics_present:2:num_harmonics_present)*time_offset).';
-        cur_corr = sum(abs(cur_phasors_temp(3:6)+next_phasors(3:6)));
-        if(cur_corr > corr_max)
-            corr_max = cur_corr;
-            phase_offset_max = phase_offset;
-            time_offset_max = time_offset;
-        end
-    end
-end
-
-%Correct square_est based on time_offset_max
-square_est = square_est/((ticks_per_sequence/sample_rate)/((ticks_per_sequence/sample_rate)+time_offset_max/2/pi/square_est));
+% %Compare with the next timestep to see how far off the square frequency's
+% %estimate is
+% next_iq_data = squeeze(data_iq(:,:,cur_timepoint+1,:));
+% cur_phasors = zeros(num_harmonics_present+1,1);
+% next_phasors = zeros(num_harmonics_present+1,1);
+% harmonic_idx = 1;
+% for harmonic_num = -num_harmonics_present:2:num_harmonics_present
+%     cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(...
+%         square_est*harmonic_num+...
+%         carrier_est...
+%     )/(sample_rate/decim_factor));
+%     cur_phasors(harmonic_idx) = sum(cur_bb.*squeeze(cur_iq_data(4,carrier_segment,:)).');
+%     next_phasors(harmonic_idx) = sum(cur_bb.*squeeze(next_iq_data(4,carrier_segment,:)).');
+%     
+%     %Add time delay to current_phasors in order to compare with next_phasors
+%     cur_phasors(harmonic_idx) = cur_phasors(harmonic_idx).*exp(1i*2*pi*(square_est*harmonic_num+carrier_est)/(sample_rate/decim_factor)*(ticks_per_sequence/decim_factor));
+%     
+%     harmonic_idx = harmonic_idx + 1;
+% end
+% corr_max = 0;
+% for phase_offset = -pi:0.1:pi
+%     for time_offset = -pi/2:0.001:pi/2
+%         cur_phasors_temp = cur_phasors.*exp(1i*phase_offset).*exp(1i*(-num_harmonics_present:2:num_harmonics_present)*time_offset).';
+%         cur_corr = sum(abs(cur_phasors_temp(3:6)+next_phasors(3:6)));
+%         if(cur_corr > corr_max)
+%             corr_max = cur_corr;
+%             phase_offset_max = phase_offset;
+%             time_offset_max = time_offset;
+%         end
+%     end
+% end
+% 
+% %Correct square_est based on time_offset_max
+% square_est = square_est/((ticks_per_sequence/sample_rate)/((ticks_per_sequence/sample_rate)+time_offset_max/2/pi/square_est));
 
  carrier_step = carrier_freq*fine_precision/10;
 % new_est = true;

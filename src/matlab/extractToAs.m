@@ -24,7 +24,6 @@ for ii=1:num_timepoints
    
     %Find maxes for normalization
     [imp_maxes, imp_max_idxs] = max(imp,[],2);
-    imp = imp./repmat(imp_maxes,[1,size(imp,2)]);
     %keyboard;
     
     %Shift everything to the right as far as the latest max peak
@@ -35,15 +34,15 @@ for ii=1:num_timepoints
         last_peak = max(imp_max_idxs);
     end
     imp = circshift(imp,[0,size(imp,2)-last_peak]);
+    
+    imp_norm = imp./repmat(imp_maxes,[1,size(imp,2)]);
 
     %Find peak of first impulse and see if we need to rotate
     for jj=1:num_antennas
-        gt_thresh = find(abs(imp(jj,:)) > THRESH);
-        gt_thresh = [0, gt_thresh];
+        gt_thresh = [0, find(abs(imp_norm(jj,:)) > THRESH)];
         gt_thresh_diff = diff(gt_thresh);
         [~,gt_thresh_diff_max] = max(gt_thresh_diff);
         imp_toas(jj,ii) = gt_thresh(gt_thresh_diff_max+1);
-	keyboard;
     end
     %keyboard;
     
