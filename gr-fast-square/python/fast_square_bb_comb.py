@@ -41,7 +41,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	param_freq = 5.792e9
 	self.bbg=0
 	self.gc1=70
-	self.if_freq = 1024e6
+	self.if_freq = 960e6
 	self.bw = 64e6
 	self.square_freq = 4e6
 	self.num_steps = 32
@@ -85,7 +85,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        self.source.set_subdev_spec("A:0 B:0")
 	        self.source.set_center_freq(self.if_freq, 0)
 	        self.source.set_gain(gain, 0)
-		self.source.set_antenna("RX2", 0)
+		#self.source.set_antenna("RX2", 0)
 		#self.source.set_gain(self.bbg, "BBG", 0)
 		#self.source.set_gain(self.gc1, "GC1", 0)
 	        self.source.set_bandwidth(self.bw, 0)
@@ -94,7 +94,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 		g = self.source.get_gain_range(1)
 	        self.source.set_center_freq(self.if_freq, 1) #Mixer @ 4992 MHz
 	        self.source.set_gain(gain, 1)
-		self.source.set_antenna("RX2", 1)
+		#self.source.set_antenna("RX2", 1)
 		#self.source.set_gain(self.bbg, "BBG", 1)
 		#self.source.set_gain(self.gc1, "GC1", 1)
 	        self.source.set_bandwidth(self.bw, 1)
@@ -114,7 +114,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	        self.source2.set_subdev_spec("A:0 B:0")
 	        self.source2.set_center_freq(self.if_freq, 0)
 	        self.source2.set_gain(gain, 0)
-		self.source2.set_antenna("RX2", 0)
+		#self.source2.set_antenna("RX2", 0)
 		#self.source2.set_gain(self.bbg, "BBG", 0)
 		#self.source2.set_gain(self.gc1, "GC1", 0)
 	        self.source2.set_bandwidth(self.bw, 0)
@@ -123,7 +123,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 		g = self.source2.get_gain_range(1)
 	        self.source2.set_center_freq(self.if_freq, 1) #Mixer @ 4992 MHz
 	        self.source2.set_gain(gain, 1)
-		self.source2.set_antenna("RX2", 1)
+		#self.source2.set_antenna("RX2", 1)
 		#self.source2.set_gain(self.bbg, "BBG", 1)
 		#self.source2.set_gain(self.gc1, "GC1", 1)
 	        self.source2.set_bandwidth(self.bw, 1)
