@@ -120,6 +120,13 @@ module usrp_std
 
    reg [15:0] debug_counter;
    reg [15:0] loopback_i_0,loopback_q_0;
+
+   ///GOLD CODE GENERATOR
+   gen_gold g1(
+	.clk(clk64),
+	.reset(tx_dsp_reset),
+	.gold_out(io_rx_b[0])
+   );
    
    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    // Transmit Side
@@ -320,8 +327,9 @@ module usrp_std
        .debug_2(rx_debugbus[15:0]),.debug_3(rx_debugbus[31:16]),
        .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3) );
    
+   wire [16:0] unused_io_rx_b;
    io_pins io_pins
-     (.io_0(io_tx_a),.io_1(io_rx_a),.io_2(io_tx_b),.io_3(io_rx_b),
+     (.io_0(io_tx_a),.io_1(io_rx_a),.io_2(io_tx_b),.io_3({io_rx_b[15:1],unused_io_rx_b}),
       .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3),
       .clock(clk64),.rx_reset(rx_dsp_reset),.tx_reset(tx_dsp_reset),
       .serial_addr(serial_addr),.serial_data(serial_data),.serial_strobe(serial_strobe));
