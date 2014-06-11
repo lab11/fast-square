@@ -54,8 +54,8 @@ comb_filter(
 reg [15:0] reset_counter;
 reg restart_data;
 
-reg [4:0] data_out_counter;
-assign data_out_strobe = (data_out_counter == 5'd16);
+reg [5:0] data_out_counter;
+assign data_out_strobe = (data_out_counter == 5'd32);
 integer i;
 
 reg [31:0] num_resets;

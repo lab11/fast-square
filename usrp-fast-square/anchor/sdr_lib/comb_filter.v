@@ -2,7 +2,7 @@
 module comb_filter(clock, reset, i_in, q_in, i_out, q_out);
 
 parameter BIT_WIDTH = 16;
-parameter DELAY_LOG2 = 3;
+parameter DELAY_LOG2 = 4;
 parameter FB_SHIFT = 3;
 
 input clock;
