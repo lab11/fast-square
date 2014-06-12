@@ -2,6 +2,7 @@ RECORD_TICKS = 35000;
 total_ticks = RECORD_TICKS + 1 + 642 + 31;
 ticks_per_sequence = 4096+total_ticks*32;
 
+
 NUM_HIST = 10;
 
 %Define constantsf for this implementation
@@ -13,11 +14,14 @@ num_steps = 32;
 sample_rate = 64e6;
 decim_factor = 17;
 carrier_freq = 5.792e9;
-square_freq = 4e6;
+square_freq = 2e6;
 square_accuracy = 30e-6;
-carrier_accuracy = 10e-6;
+carrier_accuracy = 20e-6;
 coarse_precision = 1e-7;
 fine_precision = 1e-9;
+stream_decim = 33;
+samples_per_freq = round(total_ticks/stream_decim);
+
 
 %Load calibration data
 load if_cal
@@ -58,14 +62,14 @@ num_anchors = size(anchor_positions,1);
 %TODO: May need to selectively read parts of files since this is pretty memory-intense
 smallest_num_timepoints = Inf;
 for ii=1:size(anchor_positions,1)
-	cur_data_iq = readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat']);
+	cur_data_iq = readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'],samples_per_freq);
 	if(size(cur_data_iq,2) < smallest_num_timepoints)
 		smallest_num_timepoints = size(cur_data_iq,2);
 	end
 end
 data_iq = zeros(size(anchor_positions,1),size(cur_data_iq,1),smallest_num_timepoints,size(cur_data_iq,3));
 for ii=1:size(anchor_positions,1)
-    cur_data_iq = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat']));
+    cur_data_iq = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'],samples_per_freq));
     data_iq(ii,:,:,:) = cur_data_iq(:,1:smallest_num_timepoints,:);
 
 end
@@ -121,16 +125,16 @@ for cur_timepoint=2:size(data_iq,3)
     %compensateMovement;
 %     processDirectSquare;
 %     temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
-    deconvolveSquare;
+    %deconvolveSquare;
     %keyboard;
     
 	%harmonicCalibration;
 
-	harmonicLocalization_r5;
+	%harmonicLocalization_r5;
     %keyboard;
     
 	%keyboard;
-	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
+	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors');%, 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
 	full_search_flag = false;
     disp(['done with timepoint ', num2str(cur_timepoint)])
 end

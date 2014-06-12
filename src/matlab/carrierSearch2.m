@@ -44,6 +44,7 @@ if(full_search_flag)
 	corr_max = 0;
 	square_corr_max_idx = 1;
 	cur_idx = 1;
+    bb_tot = zeros(size(cur_data_iq,1),size(cur_data_iq,3));
 	for square_est = square_coarse_search
 		for cur_freq_step = 1:size(cur_iq_data,2)
 			cur_corr = 0;
@@ -53,8 +54,8 @@ if(full_search_flag)
 						carrier_est+...
 						(carrier_segment-cur_freq_step)*(step_freq-square_est)*(step_freq/square_freq)...
 					)/(sample_rate/decim_factor));
+                bb_tot(cur_freq_step,:) = bb_tot(cur_freq_step,:) + conj(cur_bb);
 				cur_bb = cur_bb .* squeeze(cur_iq_data(4,cur_freq_step, :)).';
-		
 				cur_corr = cur_corr + abs(sum(cur_bb));
 			end
 		end
@@ -145,8 +146,8 @@ while new_est
     end
 
     if(corr_max > cur_corr_max)
-        cur_corr_max = corr_max;
-        square_est = square_est + step_sizes(corr_max_idx,2);
+        cur_corr_max = corr_max
+        square_est = square_est + step_sizes(corr_max_idx,2)
         new_est = true;
     else
         new_est = false;
@@ -249,9 +250,9 @@ while new_est
     end
 
     if(corr_max > cur_corr_max)
-        cur_corr_max = corr_max;
-        carrier_est = carrier_est + step_sizes(corr_max_idx,1);
-        square_est = square_est + step_sizes(corr_max_idx,2);
+        cur_corr_max = corr_max
+        carrier_est = carrier_est + step_sizes(corr_max_idx,1)
+        square_est = square_est + step_sizes(corr_max_idx,2)
         new_est = true;
     else
         new_est = false;
@@ -260,6 +261,6 @@ end
 
 
 carrier_offset = carrier_est;
-time_offset_max
+%time_offset_max
 carrier_est
 square_est
