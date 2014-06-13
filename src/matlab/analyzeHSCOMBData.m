@@ -12,7 +12,7 @@ start_freq = start_lo_freq + if_freq;
 step_freq = -32e6;
 num_steps = 32;
 sample_rate = 64e6;
-decim_factor = 17;
+decim_factor = 33; %DEPENDENT ON FREQ
 carrier_freq = 5.792e9;
 square_freq = 2e6;
 square_accuracy = 30e-6;
@@ -94,7 +94,7 @@ tx_phasors = zeros(num_steps,num_harmonics_present+1);
 temp_to_tx = zeros(32,8,size(data_iq,3));
 time_offset_maxs = [];
 square_ests = [];
-for cur_timepoint=2:size(data_iq,3)
+for cur_timepoint=10:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
     %Detect overflow issues
     overflow_sum = sum(abs(cur_iq_data),3);
@@ -103,7 +103,7 @@ for cur_timepoint=2:size(data_iq,3)
     end
     
     carrierSearch2;
-    if cur_timepoint == 2
+    if cur_timepoint == 10
         carrier_est_history = repmat(carrier_est,[NUM_HIST,1]);
         square_est_history = repmat(square_est,[NUM_HIST,1]);
     else
@@ -123,7 +123,7 @@ for cur_timepoint=2:size(data_iq,3)
     correctIFCal;
     compensateLOLength;
     %compensateMovement;
-%     processDirectSquare;
+%     processDirectSquare;%ONLY FOR CALIBRATION DATA
 %     temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
     %deconvolveSquare;
     %keyboard;
@@ -134,7 +134,7 @@ for cur_timepoint=2:size(data_iq,3)
     %keyboard;
     
 	%keyboard;
-	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors');%, 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
+	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'tx_phasors');%, 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
 	full_search_flag = false;
     disp(['done with timepoint ', num2str(cur_timepoint)])
 end
