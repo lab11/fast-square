@@ -1,3 +1,19 @@
+function ret = analyzeHSCOMBData_bjt(varargin)
+
+p = inputParser;
+
+defaultOperation = 'localization';
+validOperations = {'localization','calibration'};
+checkOperation = @(x) any(validatestring(x,validOperations));
+
+defaultAnchor = 1;
+
+addParamValue(p,'operation', defaultOperation, checkOperation);
+addParamValue(p,'anchor', defaultAnchor, @isnumeric);
+
+parse(p,varargin{:});
+res = p.Results;
+
 RECORD_TICKS = 35000;
 total_ticks = RECORD_TICKS + 1 + 642 + 31;
 ticks_per_sequence = 4096+total_ticks*32;
@@ -7,21 +23,24 @@ NUM_HIST = 10;
 
 %Define constantsf for this implementation
 start_lo_freq = 5.312e9;
-if_freq = 960e6;
-start_freq = start_lo_freq + if_freq;
+if_freq_nom = 990e6;
+tune_offset = 42e3;
+start_freq = start_lo_freq + if_freq_nom;
 step_freq = -32e6;
 num_steps = 32;
 sample_rate = 64e6;
 decim_factor = 33; %DEPENDENT ON FREQ
-carrier_freq = 5.792e9;
-square_freq = 2e6;
-square_accuracy = 30e-6;
-carrier_accuracy = 20e-6;
+prf = 4e6;
+prf_accuracy = 20e-6;
 coarse_precision = 1e-7;
 fine_precision = 1e-9;
 stream_decim = 33;
 samples_per_freq = round(total_ticks/stream_decim);
 
+use_image = true;
+if(use_image)
+	tune_offset = -tune_offset;
+end
 
 %Load calibration data
 load if_cal
@@ -73,6 +92,9 @@ for ii=1:size(anchor_positions,1)
     data_iq(ii,:,:,:) = cur_data_iq(:,1:smallest_num_timepoints,:);
 
 end
+if(use_image)
+	data_iq = conj(data_iq);
+end
 
 %Construct a candidate search space over which to look for the tag
 [x,y,z] = meshgrid(0:.05:4,0:.05:4,-.65);%-2:.05:2);
@@ -85,58 +107,57 @@ physical_distances = repmat(shiftdim(physical_search_space,-1),[size(anchor_posi
 physical_distances = sqrt(sum(physical_distances.^2,3));
 
 %Figure out which harmonics are in each snapshot
-num_harmonics_present = floor((sample_rate-square_freq)/(square_freq*2));
-
-keyboard;
+num_harmonics_present = floor(sample_rate/prf);
 
 cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 %Loop through each timepoint
-tx_phasors = zeros(num_steps,num_harmonics_present+1);
-temp_to_tx = zeros(32,8,size(data_iq,3));
+tx_phasors = zeros(num_steps,num_harmonics_present);
+temp_to_tx = zeros(32,num_harmonics_present,size(data_iq,3));
 time_offset_maxs = [];
 square_ests = [];
 for cur_timepoint=10:size(data_iq,3)
-	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
+    cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
     %Detect overflow issues
     overflow_sum = sum(abs(cur_iq_data),3);
     if find(overflow_sum == 0)
         continue
     end
     
-    carrierSearch2;
+    prfSearch;
     if cur_timepoint == 10
-        carrier_est_history = repmat(carrier_est,[NUM_HIST,1]);
-        square_est_history = repmat(square_est,[NUM_HIST,1]);
+        prf_est_history = repmat(prf_est,[NUM_HIST,1]);
     else
-        carrier_est_history = [carrier_est_history(2:NUM_HIST);carrier_est];
-        square_est_history = [square_est_history(2:NUM_HIST);square_est];
+        prf_est_history = [prf_est_history(2:NUM_HIST);prf_est];
     end
-    square_est = mean(square_est_history);
-    carrier_est = mean(carrier_est_history);
+    prf_est = mean(prf_est_history);
 %     square_ests = [square_ests,square_est];
 %     time_offset_maxs = [time_offset_maxs,time_offset_max];
-	harmonicExtraction;
+	harmonicExtraction_bjt;
     correctCOMBPhase;
     compensateRCLP;
     compensateRCHP;
     compensateStepTime;
-    %processIFCal;
+%    processIFCal;
     correctIFCal;
-    compensateLOLength;
-    %compensateMovement;
-%     processDirectSquare;%ONLY FOR CALIBRATION DATA
-%     temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
-    %deconvolveSquare;
-    %keyboard;
-    
-	%harmonicCalibration;
-
-	%harmonicLocalization_r5;
-    %keyboard;
-    
-	%keyboard;
-	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'tx_phasors');%, 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
+%    compensateLOLength;
+%    %compensateMovement;
+     if(strcmp(operation,res.calibration))
+         processDirectSquare_bjt;%ONLY FOR CALIBRATION DATA
+         temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
+     else
+     end
+%     deconvolveSquare;
+%    %keyboard;
+%    
+%	%harmonicCalibration;
+%
+%	%harmonicLocalization_r5;
+%    %keyboard;
+%    
+%	%keyboard;
+%	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'tx_phasors');%, 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
+	save(['timestep',num2str(cur_timepoint)],'prf_est');
 	full_search_flag = false;
     disp(['done with timepoint ', num2str(cur_timepoint)])
 end
