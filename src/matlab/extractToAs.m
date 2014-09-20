@@ -21,7 +21,7 @@ for ii=1:num_timepoints
     %zero-pad
     imp_fft = [imp_fft(:,1:ceil(size(imp_fft,2)/2)),zeros(size(imp_fft,1),INTERP*size(imp_fft,2)),imp_fft(:,ceil(size(imp_fft,2)/2)+1:end)];
     imp = ifft(imp_fft,[],2);
-   
+
     %Find maxes for normalization
     [imp_maxes, imp_max_idxs] = max(imp,[],2);
     %keyboard;

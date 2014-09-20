@@ -1,4 +1,8 @@
-prf_anchor = 1;
+if(strcmp(res.operation,'calibration') | isfield(res,'anchor'))
+	prf_anchor = res.anchor;
+else
+	prf_anchor = 1;
+end
 
 %Start by searching for the apparent prf
 
@@ -31,7 +35,6 @@ if(full_search_flag)
 				cur_corr = cur_corr + abs(sum(cur_bb));
 			end
 		end
-		keyboard;
 
 		if(cur_corr > corr_max)
 			corr_max = cur_corr;
