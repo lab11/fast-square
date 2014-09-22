@@ -1,8 +1,8 @@
 %Keep bb equivalent around for checking later
-bb_tot = zeros(size(cur_data_iq,1),size(cur_data_iq,3));
+bb_tot = zeros(size(cur_iq_data,2),size(cur_iq_data,3));
 
 %Actual harmonic frequencies are necessary for later comb filter correction
-harmonic_freqs = zeros(size(cur_data_iq,1),num_harmonics_present);
+harmonic_freqs = zeros(size(cur_iq_data,2),num_harmonics_present);
 
 %Extract amplitude, phase measurements from entire dataset
 square_phasors = zeros(size(anchor_positions,1),size(cur_iq_data,2),num_harmonics_present);

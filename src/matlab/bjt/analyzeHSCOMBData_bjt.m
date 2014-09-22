@@ -7,10 +7,12 @@ validOperations = {'localization','calibration','toa_calibration','post_localiza
 checkOperation = @(x) any(validatestring(x,validOperations));
 
 defaultAnchor = 1;
+defaultIFFreq = 990e6;
 defaultCalLocation = [0 0 0];
 
 addParamValue(p,'operation', defaultOperation, checkOperation);
 addParamValue(p,'anchor', defaultAnchor, @isnumeric);
+addParamValue(p,'if_freq', defaultIFFreq, @isnumeric);
 addParamValue(p,'toa_cal_location', defaultCalLocation, @ismatrix);
 
 parse(p,varargin{:});
@@ -25,7 +27,7 @@ NUM_HIST = 10;
 
 %Define constantsf for this implementation
 start_lo_freq = 5.312e9;
-if_freq = 990e6;
+if_freq = res.if_freq;
 tune_offset = 42e3;
 start_freq = start_lo_freq + if_freq;
 step_freq = -32e6;
@@ -141,6 +143,7 @@ elseif(strcmp(res.operation,'post_localization'))
 		end
 		ii
 	end
+	est_positions = est_positions(est_positions(:,1) > 0,:);
 	save est_positions est_positions;
 	return;
 end
@@ -218,6 +221,7 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 	if(strcmp(res.operation,'calibration'))
 		processDirectSquare_bjt;%ONLY FOR CALIBRATION DATA
 		temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
+		keyboard;
 		
 		%Final phasor calibration step calculates any remaining phase accrual errors between LO steps
 		phase_accrual = squeeze(angle(square_phasors(prf_anchor,2:end,9:end))-angle(square_phasors(prf_anchor,1:end-1,1:8)));
@@ -230,6 +234,8 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 		save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'phase_accrual');%, 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
 	else
 		harmonicLocalization_r7;
+		imp_toas = imp_toas*2;
+		keyboard;
 		save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
 	end
 

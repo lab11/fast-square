@@ -20,7 +20,7 @@ if(full_search_flag)
 	prf_corr_max_idx = 1;
 	cur_idx = 1;
 	for prf_est = prf_coarse_search
-		bb_tot = zeros(size(cur_data_iq,1),size(cur_data_iq,3));
+		bb_tot = zeros(size(cur_iq_data,2),size(cur_iq_data,3));
 		for cur_freq_step = 1:size(cur_iq_data,2)
 			cur_corr = 0;
 			calculateCenterFreqHarmonicNum;
@@ -57,7 +57,7 @@ while new_est
 	corr_max = 0;
 	for cur_step_idx = 1:size(step_sizes,1)
 		cur_corr = 0;
-		bb_tot = zeros(size(cur_data_iq,1),size(cur_data_iq,3));
+		bb_tot = zeros(size(cur_iq_data,2),size(cur_iq_data,3));
 		for cur_freq_step = 1:size(cur_iq_data,2)
 			calculateCenterFreqHarmonicNum;
 			for harmonic_num = -num_harmonics_present/2+.5:num_harmonics_present/2-.5
