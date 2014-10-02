@@ -104,6 +104,7 @@ elseif(strcmp(res.operation,'post_localization'))
 	est_positions = zeros(length(timestep_files),3);
 	for ii=1:length(timestep_files)
 		load(timestep_files(ii).name);
+		tic
 		imp_toas = imp_toas - measured_toa_errors.';
 		%Iteratively minimize the MSE between the position estimate and all TDoA
 		%measurements
@@ -142,6 +143,8 @@ elseif(strcmp(res.operation,'post_localization'))
 			est_positions(ii,:) = est_position;
 		end
 		ii
+		toc
+		keyboard;
 	end
 	est_positions = est_positions(est_positions(:,1) > 0,:);
 	save est_positions est_positions;
@@ -189,6 +192,7 @@ time_offset_maxs = [];
 square_ests = [];
 first_time = true;
 for cur_timepoint=start_timepoint:size(data_iq,3)
+	tic
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
 
 	%Detect overflow issues
@@ -235,6 +239,7 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 	else
 		harmonicLocalization_r7;
 		imp_toas = imp_toas*2;
+		toc
 		keyboard;
 		save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
 	end

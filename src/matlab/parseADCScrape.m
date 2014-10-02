@@ -1,5 +1,12 @@
 [num_data,str_data] = xlsread('adcs.xlsx');
 
+%Filter out those prices which aren't for single-unit
+quantity = num_data(:,8);
+
+quantity_ones = find((quantity == 1));
+num_data = num_data(quantity_ones,:);
+str_data = str_data(quantity_ones,:);
+
 %num_data(:,1) => price
 %num_data(:,8) => num_converters
 %str_data(:,13) => sample_rate
@@ -7,6 +14,7 @@
 prices = num_data(:,1);
 num_converters = num_data(:,8);
 sample_rates_str = str_data(:,13);
+num_bits = num_data(:,5);
 
 %Parsing logic for 'sample_rate' field (uses k's, M's, and G's... also can be a range)
 sample_rates = zeros(size(prices));
