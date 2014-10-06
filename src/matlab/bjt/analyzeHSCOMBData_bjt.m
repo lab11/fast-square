@@ -6,11 +6,16 @@ defaultOperation = 'localization';
 validOperations = {'localization','calibration','toa_calibration','post_localization'};
 checkOperation = @(x) any(validatestring(x,validOperations));
 
+defaultPRFAlgorithm = 'normal';
+validPRFAlgorithms = {'normal','fast'};
+checkPRFAlgorithm = @(x) any(validatestring(x,validPRFAlgorithms));
+
 defaultAnchor = 1;
 defaultIFFreq = 990e6;
 defaultCalLocation = [0 0 0];
 
 addParamValue(p,'operation', defaultOperation, checkOperation);
+addParamValue(p,'prf_algorithm',defaultPRFAlgorithm, checkPRFAlgorithm);
 addParamValue(p,'anchor', defaultAnchor, @isnumeric);
 addParamValue(p,'if_freq', defaultIFFreq, @isnumeric);
 addParamValue(p,'toa_cal_location', defaultCalLocation, @ismatrix);
@@ -185,6 +190,10 @@ num_harmonics_present = floor(sample_rate/prf);
 cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 
+fft_len = 2^ceil(log2(size(data_iq,4)));
+
+profile on
+
 %Loop through each timepoint
 tx_phasors = zeros(num_steps,num_harmonics_present);
 temp_to_tx = zeros(32,num_harmonics_present,size(data_iq,3));
@@ -201,7 +210,16 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 		continue;
 	end
 	
-	prfSearch;
+	if(strcmp(res.prf_algorithm,'fast'))
+		if first_time
+			prfSearch_init;
+			harmonicExtraction_bjt_init;
+			load ../tx_phasors;
+		end
+		prfSearch_fast;
+	else
+		prfSearch;
+	end
 	if first_time
 		prf_est_history = repmat(prf_est,[NUM_HIST,1]);
 		first_time = false;
@@ -213,7 +231,11 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 	%square_ests = [square_ests,square_est];
 	%time_offset_maxs = [time_offset_maxs,time_offset_max];
 
-	harmonicExtraction_bjt;
+	if(strcmp(res.prf_algorithm,'fast'))
+		harmonicExtraction_bjt_fast;
+	else
+		harmonicExtraction_bjt;
+	end
 	correctCOMBPhase;
 	compensateRCLP;
 	compensateRCHP;
@@ -240,12 +262,13 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 		harmonicLocalization_r7;
 		imp_toas = imp_toas*2;
 		toc
-		keyboard;
-		save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
+		%keyboard;
+		%save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
 	end
 
 	%save(['timestep',num2str(cur_timepoint)],'prf_est');
 	full_search_flag = false;
-	disp(['done with timepoint ', num2str(cur_timepoint)])
+	%disp(['done with timepoint ', num2str(cur_timepoint)])
 end
 
+profile viewer

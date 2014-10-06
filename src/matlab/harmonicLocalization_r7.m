@@ -1,5 +1,3 @@
-load ../tx_phasors
-
 INTERP = 64;
 
 %This does localization via analysis of the impulse response at each antenna
