@@ -1,0 +1,16 @@
+#ifndef _DEFINES_H
+#define _DEFINES_H
+
+#define RECORD_TICKS 35000
+#define TOTAL_TICKS RECORD_TICKS + 1 + 642 + 31
+#define TICKS_PER_SEQUENCE 4096 + TOTAL_TICKS * 32
+#define STREAM_DECIM 33
+
+#define NUM_HIST 10
+
+#define COARSE_PRECISION 1e-7
+#define FINE_PRECISION 1e-9
+
+#define SKIP_SAMPLES 240
+
+#endif
