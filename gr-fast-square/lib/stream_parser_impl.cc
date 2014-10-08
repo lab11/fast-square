@@ -20,7 +20,7 @@ freq_stitcher::sptr freq_stitcher::make(int message_id_base){
 stream_parser_impl::stream_parser_impl(int message_id_base)
 	: sync_block("stream_parser",
 			io_signature::make(4, 4, sizeof(gr_complex)),
-			io_signature::make(0, 0, sizeof(gr_complex))),
+			io_signature::make(0, 0, 0)),
 	d_packet_id(message_id_base)
 {
 	//Register message port for outgoing data packets
