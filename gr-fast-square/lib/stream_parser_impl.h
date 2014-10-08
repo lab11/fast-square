@@ -10,15 +10,14 @@ namespace fast_square {
 class stream_parser_impl : public stream_parser
 {
 private:
-	int *sequence_nums;
-	int cur_sequence;
-	std::vector<std::vector<gr_complex> > sequence_data;
-	std::vector<std::vector<gr_complex> > sequence_history;
+	int d_packet_id;
+	std::vector<std::deque<gr_complex> > data_history;
+	uint32_t getSequenceNum(gr_complex data);
 
 protected:
 
 public:
-	stream_parser_impl();
+	stream_parser_impl(int message_id_base);
 	~stream_parser_impl();
 
 	int work(int noutput_items,
