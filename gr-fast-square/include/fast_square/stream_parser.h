@@ -9,7 +9,7 @@
 namespace gr {
   namespace fast_square {
 
-    class FAST_SQUARE_API stream_parser : virtual public gr::sync_block
+    class FAST_SQUARE_API stream_parser : virtual public block
     {
     public:
       // gr::digital::framer_sink_1::sptr

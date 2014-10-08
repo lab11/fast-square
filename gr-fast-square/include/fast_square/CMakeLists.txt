@@ -22,5 +22,6 @@
 ########################################################################
 install(FILES
     api.h
+    defines.h
     freq_stitcher.h DESTINATION include/fast_square
 )
