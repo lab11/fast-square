@@ -5,24 +5,40 @@
 #include <fast_square/prf_estimator.h>
 
 namespace gr {
-  namespace fast_square {
+namespace fast_square {
 
-    class prf_estimator_impl : public prf_estimator
-    {
-    private:
+class prf_estimator_impl : public prf_estimator
+{
+private:
+	int d_fft_size;
+	bool d_forward;
+	bool d_shift;
+	std::vector<float> d_window;
+	void inSequenceMsg(pmt::pmt_t msg);
+	std::queue<std::vector<std::vector<gr_complex> > > d_message_queue;
+	float *d_abs_array;
 
-    protected:
+	pmt::pmt_t d_key, d_me;
 
-    public:
-      prf_estimator_impl();
-      ~prf_estimator_impl();
+	std::vector<float> cand_freqs;
+	std::vector<std::vector<int> > cand_peaks;
 
-      int work(int noutput_items,
-	       gr_vector_const_void_star &input_items,
-	       gr_vector_void_star &output_items);
-    };
+protected:
 
-  } /* namespace fast_square */
+public:
+	prf_estimator_impl(int fft_size, bool forward, const std::vector<float> &window, bool shift, int nthreads, const std::string &tag_name);
+	~prf_estimator_impl();
+
+	void set_nthreads(int n);
+	int nthreads() const;
+	bool set_window(const std::vector<float> &window);
+  
+	int work(int noutput_items,
+			gr_vector_const_void_star &input_items,
+			gr_vector_void_star &output_items);
+};
+
+} /* namespace fast_square */
 } /* namespace gr */
 
-#endif /* INCLUDED_FAST_SQUARE_FREQ_STITCHER_IMPL_H */
+#endif /* INCLUDED_FAST_SQUARE_PRF_ESTIMATOR_IMPL_H */

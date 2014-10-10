@@ -14,7 +14,7 @@ namespace gr {
     public:
       typedef boost::shared_ptr<message_fft> sptr;
 
-      static sptr make();
+      static sptr make(int fft_size);
     };
 
   } /* namespace fast_square */

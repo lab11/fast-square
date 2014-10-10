@@ -14,7 +14,13 @@ namespace gr {
     public:
       typedef boost::shared_ptr<prf_estimator> sptr;
 
-      static sptr make();
+      static sptr make(int fft_size, bool forward, const std::vector<float> &window, bool shift, int nthreads, const std::string &tag_name);
+      
+      virtual void set_nthreads(int n) = 0;
+
+      virtual int nthreads() const = 0;
+
+      virtual bool set_window(const std::vector<float> &window) = 0;
     };
 
   } /* namespace fast_square */
