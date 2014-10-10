@@ -14,7 +14,7 @@ namespace gr {
     public:
       typedef boost::shared_ptr<harmonic_extractor> sptr;
 
-      static sptr make(int fft_size);
+      static sptr make(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_tag_name);
     };
 
   } /* namespace fast_square */

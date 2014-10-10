@@ -11,6 +11,7 @@ class prf_estimator_impl : public prf_estimator
 {
 private:
 	int d_fft_size;
+	fft_complex *d_fft;
 	bool d_forward;
 	bool d_shift;
 	std::vector<float> d_window;

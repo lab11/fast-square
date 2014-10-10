@@ -89,6 +89,11 @@ void prf_estimator_impl::prfSearch_init(){
 		}
 		cand_peaks.push_back(cur_peak_array);
 	}
+
+	//Set anything past FFT_SIZE to zero
+	if(count == 0)
+		memset(d_fft->get_inbuf()+FFT_SIZE, 0, d_fft_size-FFT_SIZE);
+
 }
 
 float prf_estimator_impl::calculateCenterFreqHarmonicNum(int step_num){
@@ -130,10 +135,6 @@ int prf_estimator_impl::work(int noutput_items,
 
 	//PRF estimation logic
 	while(count < noutput_items) {
-		//First time around, set anything past FFT_SIZE to zero
-		if(count == 0)
-			memset(d_fft->get_inbuf()+FFT_SIZE, 0, d_fft_size-FFT_SIZE);
-
 		for(int ii = 0; ii < NUM_STEPS; ii++){
 			gr_complex *in = (gr_complex *) &input_items[PRF_EST_ANCHOR][ii*FFT_SIZE];
 			// copy input into optimally aligned buffer
