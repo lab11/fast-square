@@ -19,6 +19,7 @@ private:
 	gr_complex polyval(std::vector<gr_complex> &p, gr_complex x);
 	std::vector<gr_complex> freqz(std::vector<gr_complex> &b, std::vector<gr_complex> &a, std::vector<float> &w);
 	std::vector<gr_complex> freqs(std::vector<gr_complex> &b, std::vector<gr_complex> &a, std::vector<float> &w);
+	std::vector<float> extractToAs(float *imp_thresholds);
 	void correctCOMBPhase();
 	void compensateRCLP();
 	void compensateRCHP();
