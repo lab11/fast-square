@@ -11,6 +11,7 @@
 #define NUM_STEPS 32
 #define SAMPLES_PER_SEQ SAMPLES_PER_FREQ*NUM_STEPS+1
 #define FFT_SIZE 782
+#define NUM_HARMONICS_PER_STEP 16
 
 #define PRF_EST_ANCHOR 0
 
@@ -19,5 +20,6 @@
 #define COARSE_PRECISION 1e-7
 #define FINE_PRECISION 1e-9
 
+#define INTERP 64
 
 #endif

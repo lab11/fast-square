@@ -13,7 +13,12 @@ private:
 	pmt::pmt_t d_phasor_key, d_hfreq_key;
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<float> d_harmonic_freqs;
+	std::vector<float> d_time_delay_in_samples;
+	gr_complex d_i;
 
+	gr_complex polyval(std::vector<gr_complex> &p, gr_complex x);
+	std::vector<gr_complex> freqz(std::vector<gr_complex> &b, std::vector<gr_complex> &a, std::vector<float> &w);
+	std::vector<gr_complex> freqs(std::vector<gr_complex> &b, std::vector<gr_complex> &a, std::vector<float> &w);
 	void correctCOMBPhase();
 	void compensateRCLP();
 	void compensateRCHP();

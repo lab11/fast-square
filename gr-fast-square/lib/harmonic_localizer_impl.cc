@@ -25,9 +25,46 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	d_phasor_key = pmt::string_to_symbol(phasor_tag_name);
 	d_hfreq_key = pmt::string_to_symbol(hfreq_tag_name);
 	
+	d_i = gr_complex(0, 1);
+
+	//Pre-calculated vector generated for compensateStepTime step
+	for(int ii=0; ii < NUM_ANCHORS * NUM_STEPS * NUM_HARMONICS_PER_STEP; ii++){
+		d_time_delay_in_samples.push_back(((ii/NUM_HARMONICS_PER_STEP) % NUM_STEPS)*SAMPLES_PER_FREQ);
+	}
 }
 
 harmonic_localizer_impl::~harmonic_localizer_impl(){
+}
+
+gr_complex harmonic_localizer_impl::polyval(std::vector<float> &p, gr_complex x){
+	//Use horner's method to quickly calculate polynomial at frequencies specified in w
+	gr_complex out = x;
+	for(int ii=1; ii < p.size(); ii++){
+		out = p[ii] + x*out;
+	}
+	return out;
+}
+
+std::vector<gr_complex> harmonic_localizer_impl::freqz(std::vector<float> &b, std::vector<float> &a, std::vector<float> &w){
+	//freqz(b,a,w) = polyval(b,exp(i*w))./polyval(a,exp(i*w))
+	
+	std::vector<gr_complex> out;
+	for(int ii=0; ii < w.size(); ii++){
+		gr_complex iw = std::exp(d_i*w[ii]);
+		out.push_back(polyval(b,iw)/polyval(a,iw));
+	}
+	return out;
+}
+
+std::vector<gr_complex> harmonic_localizer_impl::freqs(std::vector<float> &b, std::vector<float> &a, std::vector<float> &w){
+	//freqs(b,a,w) = polyval(b,i*w)./polyval(a,i*w)
+
+	std::vector<gr_complex> out;
+	for(int ii=0; ii < w.size(); ii++){
+		gr_complex iw = d_i*w[ii];
+		out.push_back(polyval(b,iw)/polyval(a,iw));
+	}
+	return out;
 }
 
 void harmonic_localizer_impl::correctCOMBPhase(){
@@ -38,7 +75,22 @@ void harmonic_localizer_impl::correctCOMBPhase(){
 	//
 	//%Factor of two comes from the two cascaded comb filters
 	//square_phasors = square_phasors./repmat(shiftdim(comb_h.*comb_h,-1),[size(anchor_positions,1),1,1]);%.*exp(-1i*2*repmat(shiftdim(comb_phase,-1),[size(anchor_positions,1),1,1]));
+	static float b[1] = {1};
+	static std::vector<float> b_v(b, b+sizeof(b)/sizeof(float));
+	
+	static float a[17] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.875};
+	static std::vector<float> a_v(a, a+sizeof(a)/sizeof(float));
+	
+	//Calculate phasor imparted by comb filter
+	std::vector<float> w(d_harmonic_freqs);//TODO: Where is d_harmonic_freqs coming from??? (Shouldn't be abs...)
+	for(int ii=0; ii < w.size(); ii++)
+		w[ii] = w[ii]/SAMPLE_RATE;
+	std::vector<gr_complex> comb_h = freqz(b, a, w);
 
+	//Correct any imparted amplitude/phase from the two cascaded COMB filters
+	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
+		d_harmonic_phasors[ii] = d_harmonic_phasors[ii]./comb_h[ii%comb_h.size()]./comb_h[ii%comb_h.size()];
+	}
 }
 
 void harmonic_localizer_impl::compensateRCLP(){
@@ -48,7 +100,19 @@ void harmonic_localizer_impl::compensateRCLP(){
 	//rc_phase = reshape(rc_phase,size(harmonic_freqs));
 	//
 	//square_phasors = square_phasors./repmat(shiftdim(rc_phase,-1),[size(anchor_positions,1),1,1]);
-
+	static float b[1] = {200e6};
+	static std::vector<float> b_v(b, b+sizeof(b)/sizeof(float));
+	
+	static float a[2] = {1,80e6};
+	static std::vector<float> a_v(a, a+sizeof(a)/sizeof(float));
+	
+	//Calculate phasor imparted by RC low-pass filter
+	std::vector<gr_complex> rc_phase = freqs(b, a, d_harmonic_freqs);
+	
+	//Correct any imparted amplitude/phase from the RC low-pass filter
+	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
+		d_harmonic_phasors[ii] = d_harmonic_phasors[ii]/rc_phase[ii%rc_phase.size()];
+	}
 }
 
 void harmonic_localizer_impl::compensateRCHP(){
@@ -57,7 +121,22 @@ void harmonic_localizer_impl::compensateRCHP(){
 	//rc_phase = reshape(rc_phase,size(harmonic_freqs));
 	//
 	//square_phasors = square_phasors./repmat(shiftdim(rc_phase,-1),[size(anchor_positions,1),1,1]);
+	static float b[2] = {19e-12, 0};
+	static std::vector<float> b_v(b, b+sizeof(b)/sizeof(float));
+	
+	static float a[2] = {2.99e-11,3.03e-2};
+	static std::vector<float> a_v(a, a+sizeof(a)/sizeof(float));
+	
+	//Calculate phasor imparted by DBSRX2's RC highpass filter
+	std::vector<float> w(d_harmonic_freqs);
+	for(int ii=0; ii < w.size(); ii++)
+		w[ii] = w[ii]+IF_FREQ;
+	std::vector<gr_complex> rc_phase = freqs(b, a, w);
 
+	//Correct any imparted amplitude/phase from the RC high-pass filter
+	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
+		d_harmonic_phasors[ii] = d_harmonic_phasors[ii]/rc_phase[ii%rc_phase.size()];
+	}
 }
 
 void harmonic_localizer_impl::compensateStepTime(){
@@ -71,6 +150,12 @@ void harmonic_localizer_impl::compensateStepTime(){
 	//phase_corr_rep = repmat(shiftdim(harmonic_freqs.*time_delay_in_samples,-1),[size(square_phasors,1),1,1]);
 	//square_phasors = square_phasors.*exp(-1i*phase_corr_rep./(sample_rate/decim_factor).*2*pi);
 
+
+	//Correct any imparted phase from the time difference between observations
+	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
+		float phase_corr = d_harmonic_freqs[ii]*d_time_delay_in_samples[ii];
+		d_harmonic_phasors[ii] = d_harmonic_phasors[ii]*std::exp(-d_i*phase_corr/(SAMPLE_RATE/DECIM_FACTOR));
+	}
 }
 
 void harmonic_localizer_impl::harmonicLocalization(){
