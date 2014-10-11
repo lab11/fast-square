@@ -14,7 +14,7 @@ namespace gr {
     public:
       typedef boost::shared_ptr<harmonic_localizer> sptr;
 
-      static sptr make();
+      static sptr make(const std::string &phasor_tag_name, const std::string &hfreq_tag_name);
     };
 
   } /* namespace fast_square */
