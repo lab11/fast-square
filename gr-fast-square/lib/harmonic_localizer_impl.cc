@@ -12,12 +12,12 @@
 namespace gr {
 namespace fast_square {
 
-harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_name, const std::string &hfreq_tag_name){
+harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, int nthreads){
 	return gnuradio::get_initial_sptr
-		(new harmonic_localizer_impl(phasor_tag_name, hfreq_tag_name));
+		(new harmonic_localizer_impl(phasor_tag_name, hfreq_tag_name, nthreads));
 }
 
-harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_tag_name)
+harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, int nthreads)
 	: sync_block("harmonic_localizer",
 			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex)),
 			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex)))
@@ -31,9 +31,34 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	for(int ii=0; ii < NUM_ANCHORS * NUM_STEPS * NUM_HARMONICS_PER_STEP; ii++){
 		d_time_delay_in_samples.push_back(((ii/NUM_HARMONICS_PER_STEP) % NUM_STEPS)*SAMPLES_PER_FREQ);
 	}
+
+	//Pre-compute hamming window for later use in super-resolution generation of impulse response plots
+	genFFTWindow();
+
+	d_fft = new fft_complex(NUM_HARM_PER_STEP_POST*NUM_STEPS*INTERP, true, nthreads);
+	
+	const int alignment_multiple =
+		volk_get_alignment() / sizeof(gr_complex);
+	set_alignment(std::max(1, alignment_multiple));
 }
 
 harmonic_localizer_impl::~harmonic_localizer_impl(){
+}
+
+void harmonic_localizer_impl::genFFTWindow(){
+	//For now, the FFT window will be a Hamming window
+	float alpha = 0.54;
+	float beta = 1.0-alpha;
+	for(int ii=0; ii < FFT_SIZE; ii++){
+		float cur_window_val = alpha - beta*std::cos(2*M_PI*ii/(FFT_SIZE-1));
+		d_fft_window.push_back(cur_window_val);
+	}
+
+	//Apply fftshift to d_fft_window
+	for(int ii=0; ii < FFT_SIZE/2; ii++){
+		d_fft_window.push_back(d_fft_window[ii]);
+	}
+	d_fft_window.erase(d_fft_window.begin(), d_fft_window.begin+FFT_SIZE/2);
 }
 
 gr_complex harmonic_localizer_impl::polyval(std::vector<float> &p, gr_complex x){
@@ -158,7 +183,7 @@ void harmonic_localizer_impl::compensateStepTime(){
 	}
 }
 
-std::vector<float> harmonic_localizer_impl::extractToAs(float *imp_thresholds){
+std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp_rearranged, float *imp_thresholds){
 	//INTERP = 64;
 	//THRESH = 0.2;
 	//
@@ -217,7 +242,81 @@ std::vector<float> harmonic_localizer_impl::extractToAs(float *imp_thresholds){
 	//    %ii
 	//end
 
+	static std::vector<gr_complex> fft_array(FFT_SIZE_POST*INTERP,0);
+	std::vector<int> toas;
 
+	for(int ii=0; ii < NUM_ANCHORS; ii++){
+		int anchor_idx = ii*FFT_SIZE_POST;
+		for(int jj=0; jj < NUM_STEPS; jj++){
+			int step_idx = jj*NUM_HARM_PER_STEP_POST;
+			for(int kk=0; kk < NUM_HARM_PER_STEP_POST; kk++){
+
+				//Multiply phasors by a window for super-resolution purposes
+				int cur_idx = anchor_idx + step_idx + kk;
+				hp_rearranged[cur_idx] *= d_fft_window[kk];
+			
+				//Divide by the expected phasors
+				hp_rearranged[cur_idx] /= actual_fft[cur_idx];
+			}
+		}
+
+		//Perform IFFT on zero-padded array to obtain super-resolution CIR
+
+		//Start by copying the current phasors into the appropriate array
+		std::copy(hp_rearranged + anchor_idx, hp_rearranged + anchor_idx + FFT_SIZE_POST/2, fft_array.begin());
+		std::copy(hp_rearranged + anchor_idx + FFT_SIZE_POST/2, hp_rearranged + anchor_idx + FFT_SIZE_POST, fft_array.end() - FFT_SIZE_POST/2);
+
+		//Then perform FFT
+		memcpy(d_fft->get_inbuf(), &fft_array[0], FFT_SIZE_POST);
+
+		//Get magnitude of CIR
+		std::vector<float> cir_mag(FFT_SIZE_POST, 0);
+		volk_32fc_magnitude_32f_u(&cir_mag[0], d_fft->get_outbuf(), FFT_SIZE_POST);
+		
+		//Rearrange elements to get IFFT.  Record maximum peak
+		float max_mag = 0.0;
+		int max_mag_idx = 0;
+		for(int jj=0; jj < FFT_SIZE_POST; jj++){
+			if(jj < FFT_SIZE_POST/2 && jj > 0){
+				float temp_mag = cir_mag[jj];
+				cir_mag[jj] = cir_mag[FFT_SIZE_POST-jj];
+				cir_mag[FFT_SIZE_POST-jj] = temp_mag;
+			}
+			if(cir_mag[jj] > max_mag){
+				max_mag = cir_mag;
+				max_mag_idx = jj;
+			}
+		}
+
+		//Lsat step: Determine ToA based on passed thresholds
+		int cur_idx = max_mag_idx;
+		int cand_toa_idx = max_mag_idx;
+		int below_threshold_count = 0;
+		for(int jj=0; jj < FFT_SIZE_POST; jj++){
+			cur_idx--;
+			if(cur_idx < 0) cur_idx = FFT_SIZE_POST-1;
+			if(cir_mag[toa_idx] < imp_thresholds[ii]){
+				below_threshold_count++;
+				if(below_treshold_count < FFT_SIZE_POST/4) break;
+			} else {
+				cand_toa_idx = cur_idx;
+				below_treshold_count = 0;
+			}
+		}
+		toas[ii] = cand_toa_idx;
+	}
+
+	//Rotate ToAs so that ToA of the first anchor ends up in the middle in order to avoid issues where ToAs span 
+	int rotate_amount = (FFT_SIZE_POST/2)-toas[0];
+	for(int ii=0; ii < NUM_ANCHORS; ii++){
+		toas[ii] += rotate_amount;
+		if(toas[ii] < 0)
+			toas[ii] += FFT_SIZE_POST;
+		else if(toas[ii] >= FFT_SIZE_POST)
+			toas[ii] -= FFT_SIZE_POST;
+	}
+
+	return toas;
 }
 
 void harmonic_localizer_impl::harmonicLocalization(){
@@ -244,16 +343,25 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	//imp_toas = imp_toas/(2*prf_est*size(square_phasors_reshaped,2))/INTERP*3e8;
 
 	//Rearrange square phasors so they're in the expected shape/orientation for IFFT processing
-	std::vector<gr_complex> d_hp_rearranged;
+	std::vector<gr_complex> hp_rearranged;
 	for(int ii=0; ii < NUM_ANCHORS; ii++)
 		for(int jj=0; jj < NUM_STEPS; jj++)
 			for(int kk=HARMONIC_NON_OVERLAP_START; kk <= HARMONIC_NON_OVERLAP_END; kk++)
-				d_hp_rearranged.push_back(d_harmonic_phasors[ii*NUM_STEPS*NUM_HARMONICS_PER_STEP+jj*NUM_HARMONICS_PER_STEP+kk]);
+				hp_rearranged.push_back(d_harmonic_phasors[ii*NUM_STEPS*NUM_HARMONICS_PER_STEP+jj*NUM_HARMONICS_PER_STEP+kk]);
 
 	//Calculate ToAs given phasors and expected phasors
 	//TODO: Initialize d_tx_phasors somewhere
 	float imp_thresholds[4] = {0.2, 0.2, 0.2, 0.2};
-	imp_toas = extractToAs(imp_thresholds);
+	std::vector<int> imp_toas = extractToAs(hp_rearranged, imp_thresholds);
+	std::vector<float> imp_in_meters;
+	for(int ii=0; ii < imp_toas.size(); ii++){
+		//TODO: Where is d_prf_est initialized?
+		float cur_toa = (float)imp_toas[ii]/(2.0*d_prf_est*FFT_SIZE_POST)/INTERP*3e8;
+		imp_in_meters.push_back(cur_toa);
+	}
+	
+	//Finally, determine position based on calculated ToAs...
+	//TODO: This...
 }
 
 int harmonic_localizer_impl::work(int noutput_items,
