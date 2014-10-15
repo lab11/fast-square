@@ -12,20 +12,28 @@
 namespace gr {
 namespace fast_square {
 
-harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, int nthreads){
+harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, int gatd_id, int nthreads){
 	return gnuradio::get_initial_sptr
-		(new harmonic_localizer_impl(phasor_tag_name, hfreq_tag_name, nthreads));
+		(new harmonic_localizer_impl(phasor_tag_name, hfreq_abs_tag_name, hfreq_tag_name, prf_tag_name, gatd_host, gatd_port, gatd_id, nthreads));
 }
 
-harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, int nthreads)
+harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, int gatd_id, int nthreads)
 	: sync_block("harmonic_localizer",
 			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex)),
-			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex)))
+			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex))),
+	d_gatd_id(gatd_id), d_connected(false)
 {
 	d_phasor_key = pmt::string_to_symbol(phasor_tag_name);
 	d_hfreq_key = pmt::string_to_symbol(hfreq_tag_name);
+	d_hfreq_abs_key = pmt::string_to_symbol(hfreq_abs_tag_name);
+	d_prf_key = pmt::string_to_symbol(prf_tag_name);
 	
 	d_i = gr_complex(0, 1);
+
+	readActualFFT();
+
+	// Get the destination address
+	connect(gatd_host, gatd_port);
 
 	//Pre-calculated vector generated for compensateStepTime step
 	for(int ii=0; ii < NUM_ANCHORS * NUM_STEPS * NUM_HARMONICS_PER_STEP; ii++){
@@ -43,6 +51,144 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 }
 
 harmonic_localizer_impl::~harmonic_localizer_impl(){
+      if(d_connected)
+        gatd_disconnect();
+}
+
+void harmonic_localizer_impl::gatd_connect(const std::string &host, int port){
+	if(d_connected)
+		disconnect();
+	
+	std::string s_port = (boost::format("%d")%port).str();
+	if(host.size() > 0) {
+		boost::asio::ip::udp::resolver resolver(d_io_service);
+		boost::asio::ip::udp::resolver::query query(boost::asio::ip::udp::v4(),
+		                                            host, s_port,
+		                                            boost::asio::ip::resolver_query_base::passive);
+		d_endpoint = *resolver.resolve(query);
+		
+		d_socket = new boost::asio::ip::udp::socket(d_io_service);
+		d_socket->open(boost::asio::ip::udp::v4());
+		
+		boost::asio::socket_base::reuse_address roption(true);
+		d_socket->set_option(roption);
+		
+		d_connected = true;
+	}
+}
+
+void harmonic_localizer_impl::gatd_disconnect(){
+  if(!d_connected)
+    return;
+
+  gr::thread::scoped_lock guard(d_mutex);  // protect d_socket from work()
+
+  // Send a few zero-length packets to signal receiver we are done
+  boost::array<char, 1> send_buf = {{ 0 }};
+  if(d_eof) {
+    int i;
+    for(i = 0; i < 3; i++)
+      d_socket->send_to(boost::asio::buffer(send_buf), d_endpoint);
+  }
+
+  d_socket->close();
+  delete d_socket;
+
+  d_connected = false;
+}
+
+
+void harmonic_localizer_impl::readActualFFT(){
+	//Open file for reading
+	std::ifstream source;
+	source.open("tx_phasors.txt", std::ios_base::in);
+		
+	//Read complex numbers in one at a time
+	for(int ii=0; ii < NUM_STEPS*NUM_HARM_PER_STEP_POST; ii++){
+		gr_complex cur_phasor;
+		source >> cur_phasor.real >> cur_phasor.imag;
+		d_actual_fft.push_back(cur_phasor);
+	}
+	
+	//Close file
+	source.close();
+}
+
+std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<float> toas){
+
+	//double ti=67335898; double tk=86023981; double tj=78283279;  double tl=75092320;
+	//double xi=0;        double xk=0;        double xj=-15338349; double xl=-18785564;
+	//double yi=26566800; double yk=6380000;  double yj=15338349;  double yl=18785564;
+	//double zi=0;        double zk=25789348; double zj=15338349;  double zl=0;
+	//
+	//cout<<"ti = "<<ti<<endl;  cout<<"tj = "<<tj<<endl;  cout<<"tk = "<<tk<<endl;
+	//cout<<"tl = "<<tl<<endl;  cout<<"xi = "<<xi<<endl;  cout<<"xj = "<<xj<<endl;
+	//cout<<"xk = "<<xk<<endl;  cout<<"xl = "<<xl<<endl;  cout<<"yi = "<<yi<<endl;
+	//cout<<"yj = "<<yj<<endl;  cout<<"yk = "<<yk<<endl;  cout<<"yl = "<<yl<<endl;
+	//cout<<"zi = "<<zi<<endl;  cout<<"zj = "<<zj<<endl;  cout<<"zk = "<<zk<<endl;
+	//cout<<"zl = "<<zl<<endl;
+
+	static double ax[4] = {2.405, 2.105, 4.108, 0.273};
+	static double ay[4] = {3.815, 0.034, 0.347, 0.343};
+	static double az[4] = {2.992, 2.494, 1.543, 1.560};
+	
+	double xji=ax[1]-ax[0]; double xki=ax[2]-ax[0]; double xjk=ax[1]-ax[2]; double xlk=ax[3]-ax[2];
+	double xik=ax[0]-ax[2]; double yji=ay[1]-ay[0]; double yki=ay[2]-ay[0]; double yjk=ay[1]-ay[2];
+	double ylk=ay[3]-ay[2]; double yik=ay[0]-ay[2]; double zji=az[1]-az[0]; double zki=az[2]-az[0];
+	double zik=az[0]-az[2]; double zjk=az[1]-az[2]; double zlk=az[3]-az[2];
+	
+	double rij=abs((100000*(toas[0]-toas[1]))/333564); double rik=abs((100000*(toas[0]-toas[2]))/333564);
+	double rkj=abs((100000*(toas[2]-toas[1]))/333564); double rkl=abs((100000*(toas[2]-toas[3]))/333564);
+	
+	double s9 =rik*xji-rij*xki; double s10=rij*yki-rik*yji; double s11=rik*zji-rij*zki;
+	double s12=(rik*(rij*rij + ax[0]*ax[0] - ax[1]*ax[1] + ay[0]*ay[0] - ay[1]*ay[1] + az[0]*az[0] - az[1]*az[1])
+	           -rij*(rik*rik + ax[0]*ax[0] - ax[2]*ax[2] + ay[0]*ay[0] - ay[2]*ay[2] + az[0]*az[0] - az[2]*az[2]))/2;
+	
+	double s13=rkl*xjk-rkj*xlk; double s14=rkj*ylk-rkl*yjk; double s15=rkl*zjk-rkj*zlk;
+	double s16=(rkl*(rkj*rkj + ax[2]*ax[2] - ax[1]*ax[1] + ay[2]*ay[2] - ay[1]*ay[1] + az[2]*az[2] - az[1]*az[1])
+	           -rkj*(rkl*rkl + ax[2]*ax[2] - ax[3]*ax[3] + ay[2]*ay[2] - ay[3]*ay[3] + az[2]*az[2] - az[3]*az[3]))/2;
+	
+	double a= s9/s10; double b=s11/s10; double c=s12/s10; double d=s13/s14;
+	double e=s15/s14; double f=s16/s14; double g=(e-b)/(a-d); double h=(f-c)/(a-d);
+	double i=(a*g)+b; double j=(a*h)+c;
+	double k=rik*rik+ax[0]*ax[0]-ax[2]*ax[2]+ay[0]*ay[0]-ay[2]*ay[2]+az[0]*az[0]-az[2]*az[2]+2*h*xki+2*j*yki;
+	double l=2*(g*xki+i*yki+zki);
+	double m=4*rik*rik*(g*g+i*i+1)-l*l;
+	double n=8*rik*rik*(g*(ax[0]-h)+i*(ay[0]-j)+az[0])+2*l*k;
+	double o=4*rik*rik*((ax[0]-h)*(ax[0]-h)+(ay[0]-j)*(ay[0]-j)+az[0]*az[0])-k*k;
+	double s28=n/(2*m);     double s29=(o/m);       double s30=(s28*s28)-s29;
+	double root=sqrt(s30);
+	float z1=s28+root;
+	float z2=s28-root;
+	float x1=g*z1+h;
+	float x2=g*z2+h;
+	float y1=a*x1+b*z1+c;
+	float y2=a*x2+b*z2+c;
+
+	//Construct outgoing packet
+	uint8_t outgoing_packet[10+24]; //24 = 6*4
+	memset(&outgoing_packet[0], 0, 6);
+	memcpy(&outgoing_packet[6], &d_gatd_id, sizeof(d_gatd_id));
+	memcpy(&outgoing_packet[10], &x1, sizeof(x1));
+	memcpy(&outgoing_packet[14], &y1, sizeof(y1));
+	memcpy(&outgoing_packet[18], &z1, sizeof(z1));
+	memcpy(&outgoing_packet[22], &x2, sizeof(x2));
+	memcpy(&outgoing_packet[26], &y2, sizeof(y2));
+	memcpy(&outgoing_packet[30], &z2, sizeof(z2));
+
+	//Push to GATD
+	gr::thread::scoped_lock guard(d_mutex);  // protect d_socket
+	if(d_connected) {
+		try {
+			r = d_socket->send_to(boost::asio::buffer((void*)(outgoing_packet), 34),
+			                     d_endpoint);
+		}
+		catch(std::exception& e) {
+			GR_LOG_ERROR(d_logger, boost::format("send error: %s") % e.what());
+			return -1;
+		}
+	}
+
 }
 
 void harmonic_localizer_impl::genFFTWindow(){
@@ -107,7 +253,7 @@ void harmonic_localizer_impl::correctCOMBPhase(){
 	static std::vector<float> a_v(a, a+sizeof(a)/sizeof(float));
 	
 	//Calculate phasor imparted by comb filter
-	std::vector<float> w(d_harmonic_freqs);//TODO: Where is d_harmonic_freqs coming from??? (Shouldn't be abs...)
+	std::vector<float> w(d_harmonic_freqs);
 	for(int ii=0; ii < w.size(); ii++)
 		w[ii] = w[ii]/SAMPLE_RATE;
 	std::vector<gr_complex> comb_h = freqz(b, a, w);
@@ -256,7 +402,7 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 				hp_rearranged[cur_idx] *= d_fft_window[kk];
 			
 				//Divide by the expected phasors
-				hp_rearranged[cur_idx] /= actual_fft[cur_idx];
+				hp_rearranged[cur_idx] /= d_actual_fft[cur_idx];
 			}
 		}
 
@@ -350,18 +496,16 @@ void harmonic_localizer_impl::harmonicLocalization(){
 				hp_rearranged.push_back(d_harmonic_phasors[ii*NUM_STEPS*NUM_HARMONICS_PER_STEP+jj*NUM_HARMONICS_PER_STEP+kk]);
 
 	//Calculate ToAs given phasors and expected phasors
-	//TODO: Initialize d_tx_phasors somewhere
 	float imp_thresholds[4] = {0.2, 0.2, 0.2, 0.2};
 	std::vector<int> imp_toas = extractToAs(hp_rearranged, imp_thresholds);
 	std::vector<float> imp_in_meters;
 	for(int ii=0; ii < imp_toas.size(); ii++){
-		//TODO: Where is d_prf_est initialized?
 		float cur_toa = (float)imp_toas[ii]/(2.0*d_prf_est*FFT_SIZE_POST)/INTERP*3e8;
 		imp_in_meters.push_back(cur_toa);
 	}
 	
 	//Finally, determine position based on calculated ToAs...
-	//TODO: This...
+	tdoa4(imp_in_meters);
 }
 
 int harmonic_localizer_impl::work(int noutput_items,
@@ -381,6 +525,10 @@ int harmonic_localizer_impl::work(int noutput_items,
 				d_harmonic_phasors = pmt::c32vector_elements(tags[ii].value);
 			else if(tags[ii].key == d_hfreq_key)
 				d_harmonic_freqs = pmt::f32vector_elements(tags[ii].value);
+			else if(tags[ii].key == d_hfreq_abs_key)
+				d_harmonic_abs_freqs = pmt::f32vector_elements(tags[ii].value);
+			else if(tags[ii].key == d_prf_key)
+				d_prf_est = (float)pmt::to_double(tags[ii].value);
 		}
 
 		//It is assumed that each dataset coming in has already populated d_harmonic_phasors and d_hfreq_key

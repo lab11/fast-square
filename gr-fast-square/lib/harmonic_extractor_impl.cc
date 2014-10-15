@@ -12,12 +12,12 @@
 namespace gr {
 namespace fast_square {
 
-harmonic_extractor::sptr harmonic_extractor::make(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_tag_name){
+harmonic_extractor::sptr harmonic_extractor::make(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name){
 	return gnuradio::get_initial_sptr
-		(new harmonic_extractor_impl(fft_size, nthreads, prf_tag_name, phasor_tag_name, hfreq_tag_name));
+		(new harmonic_extractor_impl(fft_size, nthreads, prf_tag_name, phasor_tag_name, hfreq_abs_tag_name, hfreq_tag_name));
 }
 
-harmonic_extractor_impl::harmonic_extractor_impl(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_tag_name)
+harmonic_extractor_impl::harmonic_extractor_impl(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name)
 	: sync_block("harmonic_extractor",
 			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex)),
 			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex))),
@@ -25,6 +25,7 @@ harmonic_extractor_impl::harmonic_extractor_impl(int fft_size, int nthreads, con
 {
 	d_prf_key = pmt::string_to_symbol(prf_tag_name);
 	d_phasor_key = pmt::string_to_symbol(phasor_tag_name);
+	d_hfreq_abs_key = pmt::string_to_symbol(hfreq_abs_tag_name);
 	d_hfreq_key = pmt::string_to_symbol(hfreq_tag_name);
 
 	d_fft = new fft_complex(d_fft_size, true, nthreads);
@@ -90,8 +91,10 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data
 		freq_offs.push_back(2.0*M_PI*((d_prf_est-PRF)*((START_LO_FREQ-IF_FREQ+STEP_FREQ*ii)/PRF)-TUNE_OFFSET)/(SAMPLE_RATE/DECIM_FACTOR));
 
 	d_harmonic_phasors.clear();
-	d_harmonic_freqs.clear();
+	d_harmonic_freqs_abs.clear();
 	for(int ii=0; ii < NUM_STEPS; ii++){
+		float center_freq_harmonic_num = calculateCenterFreqHarmonicNum(ii);
+
 		//Apply frequency offset to all the raw data
 		d_nco.set_freq(freq_offs[ii]);
 		d_nco.sincos(nco_array, FFT_SIZE, 1.0);
@@ -103,7 +106,8 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data
 		//Extract harmonics based on indices computed previously
 		for(int jj=0; jj < d_sp_idxs.size(); jj++){
 			d_harmonic_phasors.push_back(d_fft->get_outbuf()[d_sp_idxs[ii]]);
-			d_harmonic_freqs.push_back(harmonic_num_abs[ii][jj]*d_prf_est);
+			d_harmonic_freqs_abs.push_back(harmonic_num_abs[ii][jj]*d_prf_est);
+			d_harmonic_freqs.push_back((harmonic_num_abs[ii][jj]-center_freq_harmonic_num)*d_prf_est);
 		}
 
 		data += FFT_SIZE;
@@ -139,6 +143,12 @@ int harmonic_extractor_impl::work(int noutput_items,
 			abs_out_sample_cnt + count,
 			d_phasor_key,
 			pmt::init_c32vector(d_harmonic_phasors.size(), &d_harmonic_phasors[0]),
+			d_me
+		);
+		add_item_tag(0,
+			abs_out_sample_cnt + count,
+			d_hfreq_abs_key,
+			pmt::init_f32vector(d_harmonic_freqs_abs.size(), &d_harmonic_freqs_abs[0]),
 			d_me
 		);
 		add_item_tag(0,

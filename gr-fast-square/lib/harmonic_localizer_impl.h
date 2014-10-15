@@ -11,13 +11,27 @@ class harmonic_localizer_impl : public harmonic_localizer
 {
 private:
 	fft_complex *d_fft;
-	pmt::pmt_t d_phasor_key, d_hfreq_key;
+	pmt::pmt_t d_phasor_key, d_hfreq_key, d_hfreq_abs_key, d_prf_key;
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<float> d_harmonic_freqs;
+	std::vector<float> d_harmonic_abs_freqs;
 	std::vector<float> d_time_delay_in_samples;
 	std::vector<float> d_fft_window;
+	std::vector<gr_complex> d_actual_fft;
+	float d_prf_est;
 	gr_complex d_i;
+	int d_gatd_id;
 
+	//UDP stuff
+	bool   d_connected;       // are we connected?
+	gr::thread::mutex  d_mutex;    // protects d_socket and d_connected
+	
+	boost::asio::ip::udp::socket *d_socket;          // handle to socket
+	boost::asio::ip::udp::endpoint d_endpoint;
+	boost::asio::io_service d_io_service;
+
+	void readActualFFT();
+	std::vector<float> tdoa4(std::vector<float> toas);
 	void genFFTWindow();
 	gr_complex polyval(std::vector<gr_complex> &p, gr_complex x);
 	std::vector<gr_complex> freqz(std::vector<gr_complex> &b, std::vector<gr_complex> &a, std::vector<float> &w);
@@ -32,8 +46,11 @@ private:
 protected:
 
 public:
-	harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, int nthreads);
+	harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, int gatd_id, int nthreads);
 	~harmonic_localizer_impl();
+
+	void gatd_connect(const std::string &host, int port);
+	void gatd_disconnect();
 
 	int work(int noutput_items,
 			gr_vector_const_void_star &input_items,
