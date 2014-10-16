@@ -3,6 +3,7 @@
 #define INCLUDED_FAST_SQUARE_PRF_ESTIMATOR_IMPL_H
 
 #include <fast_square/prf_estimator.h>
+#include <fast_square/defines.h>
 
 namespace gr {
 namespace fast_square {

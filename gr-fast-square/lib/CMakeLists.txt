@@ -26,8 +26,8 @@ include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
 
 list(APPEND fast_square_sources
-    harmonic_exctractor_impl.cc
-    harmonic_localizer_iml.cc
+    harmonic_extractor_impl.cc
+    harmonic_localizer_impl.cc
     prf_estimator_impl.cc
     stream_parser_impl.cc
     stream_parser_ports_impl.cc

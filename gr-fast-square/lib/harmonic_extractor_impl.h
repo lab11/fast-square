@@ -3,6 +3,9 @@
 #define INCLUDED_FAST_SQUARE_HARMONIC_EXTRACTOR_IMPL_H
 
 #include <fast_square/harmonic_extractor.h>
+#include <fast_square/defines.h>
+#include <gnuradio/fft/fft.h>
+#include <gnuradio/fxpt_nco.h>
 
 namespace gr {
 namespace fast_square {
@@ -10,14 +13,14 @@ namespace fast_square {
 class harmonic_extractor_impl : public harmonic_extractor
 {
 private:
-	fft_complex *d_fft;
+	fft::fft_complex *d_fft;
 	int d_fft_size;
 	std::vector<int> d_sp_idxs;
 	std::vector<std::vector<int> > d_harmonic_nums_abs;
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<float> d_harmonic_freqs_abs;
 	std::vector<float> d_harmonic_freqs;
-	pmt::pmt_t d_prf_key, d_phasor_key, d_hfreq_key, d_hfreq_abs_key;
+	pmt::pmt_t d_prf_key, d_phasor_key, d_hfreq_key, d_hfreq_abs_key, d_me;
 	float d_prf_est;
 
 	gr::fxpt_nco d_nco;
@@ -25,6 +28,7 @@ private:
 
 	void harmonicExtraction_bjt_init();
 	void harmonicExtraction_bjt_fast(const gr_complex *data);
+	float calculateCenterFreqHarmonicNum(int step_num);
 
 protected:
 

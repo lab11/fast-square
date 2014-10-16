@@ -5,6 +5,7 @@
 
 #include "harmonic_extractor_impl.h"
 #include <gnuradio/io_signature.h>
+#include <volk/volk.h>
 #include <cstdio>
 #include <string>
 #include <fstream>
@@ -28,7 +29,11 @@ harmonic_extractor_impl::harmonic_extractor_impl(int fft_size, int nthreads, con
 	d_hfreq_abs_key = pmt::string_to_symbol(hfreq_abs_tag_name);
 	d_hfreq_key = pmt::string_to_symbol(hfreq_tag_name);
 
-	d_fft = new fft_complex(d_fft_size, true, nthreads);
+	std::stringstream id;
+	id << name() << unique_id();
+	d_me = pmt::string_to_symbol(id.str());
+
+	d_fft = new fft::fft_complex(d_fft_size, true, nthreads);
 	
 	const int alignment_multiple =
 		volk_get_alignment() / sizeof(gr_complex);
@@ -42,13 +47,13 @@ harmonic_extractor_impl::~harmonic_extractor_impl(){
 void harmonic_extractor_impl::harmonicExtraction_bjt_init(){
 	//Initialize temporary harmonic_nums vector
 	std::vector<float> harmonic_nums;
-	for(float cur_harmonic_num = -1.0*NUM_HARMONICS_PRESENT/2+.5; cur_harmonic_num <= 1.0*NUM_HARMONICS_PRESENT/2-.5; cur_harmonic_num++)
+	for(float cur_harmonic_num = -1.0*NUM_HARMONICS_PER_STEP/2+.5; cur_harmonic_num <= 1.0*NUM_HARMONICS_PER_STEP/2-.5; cur_harmonic_num++)
 		harmonic_nums.push_back(cur_harmonic_num);
 
 	//d_sp_idx indexes the harmonics from the FFT once it's corrected for any frequency offsets
 	d_sp_idxs.clear();
 	for(int ii=0; ii < harmonic_nums.size(); ii++){
-		int cur_sp_idx = round(1.0*d_fft_size*harmonic_nums[ii]*PRF/(SAMPLE_RATE/DECIM_FACTOR)) % fft_len;
+		int cur_sp_idx = (int)(round(1.0*FFT_SIZE*harmonic_nums[ii]*PRF/(SAMPLE_RATE/DECIM_FACTOR))) % FFT_SIZE;
 		d_sp_idxs.push_back(cur_sp_idx);
 	}
 
@@ -67,8 +72,16 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_init(){
 	nco_array = new gr_complex[d_fft_size];
 
 	//Set anything past FFT_SIZE to zero
-	if(count == 0)
-		memset(d_fft->get_inbuf()+FFT_SIZE, 0, d_fft_size-FFT_SIZE);
+	memset(d_fft->get_inbuf()+FFT_SIZE, 0, d_fft_size-FFT_SIZE);
+}
+
+float harmonic_extractor_impl::calculateCenterFreqHarmonicNum(int step_num){
+	float ret;
+	if(USE_IMAGE)
+		ret = ((START_LO_FREQ-IF_FREQ+STEP_FREQ*step_num)/PRF);
+	else
+		ret = ((START_LO_FREQ+IF_FREQ+STEP_FREQ*step_num)/PRF);
+	return ret;
 }
 
 void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data){
@@ -106,8 +119,8 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data
 		//Extract harmonics based on indices computed previously
 		for(int jj=0; jj < d_sp_idxs.size(); jj++){
 			d_harmonic_phasors.push_back(d_fft->get_outbuf()[d_sp_idxs[ii]]);
-			d_harmonic_freqs_abs.push_back(harmonic_num_abs[ii][jj]*d_prf_est);
-			d_harmonic_freqs.push_back((harmonic_num_abs[ii][jj]-center_freq_harmonic_num)*d_prf_est);
+			d_harmonic_freqs_abs.push_back(d_harmonic_nums_abs[ii][jj]*d_prf_est);
+			d_harmonic_freqs.push_back((d_harmonic_nums_abs[ii][jj]-center_freq_harmonic_num)*d_prf_est);
 		}
 
 		data += FFT_SIZE;
@@ -136,7 +149,7 @@ int harmonic_extractor_impl::work(int noutput_items,
 		}
 
 		//Run harmonic extraction logic
-		harmonicExtraction_bjt_fast(input_items[count]);
+		harmonicExtraction_bjt_fast((const gr_complex *) input_items[count]);
 
 		//Add new phasors and computed frequencies as tags to data stream
 		add_item_tag(0,

@@ -3,6 +3,7 @@
 #define INCLUDED_FAST_SQUARE_HARMONIC_LOCALIZER_IMPL_H
 
 #include <fast_square/harmonic_localizer.h>
+#include <fast_square/defines.h>
 
 namespace gr {
 namespace fast_square {

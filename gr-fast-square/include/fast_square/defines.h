@@ -1,6 +1,15 @@
 #ifndef _DEFINES_H
 #define _DEFINES_H
 
+#define PRF 4e6
+#define SAMPLE_RATE 64e6
+#define DECIM_FACTOR 33
+#define START_LO_FREQ 5.312e9
+#define IF_FREQ 990e6
+#define STEP_FREQ (-32e6)
+#define TUNE_OFFSET 42e3
+#define USE_IMAGE true
+
 #define RECORD_TICKS 35000
 #define TOTAL_TICKS RECORD_TICKS + 1 + 642 + 31
 #define TICKS_PER_SEQUENCE 4096 + TOTAL_TICKS * 32

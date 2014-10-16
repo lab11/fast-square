@@ -3,6 +3,7 @@
 #define INCLUDED_FAST_SQUARE_STREAM_PARSER_IMPL_H
 
 #include <fast_square/stream_parser.h>
+#include <fast_square/defines.h>
 
 namespace gr {
 namespace fast_square {

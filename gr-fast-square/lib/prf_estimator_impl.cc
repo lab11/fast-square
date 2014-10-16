@@ -5,6 +5,7 @@
 
 #include "prf_estimator_impl.h"
 #include <gnuradio/io_signature.h>
+#include <volk/volk.h>
 #include <cstdio>
 #include <string>
 #include <fstream>
