@@ -23,5 +23,9 @@
 install(FILES
     api.h
     defines.h
-    freq_stitcher.h DESTINATION include/fast_square
+    harmonic_extractor.h
+    harmonic_localizer.h
+    prf_estimator.h
+    stream_parser.h
+    stream_parser_ports.h DESTINATION include/fast_square
 )

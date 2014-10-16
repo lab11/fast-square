@@ -1,13 +1,13 @@
 
-#ifndef INCLUDED_FAST_SQUARE_STREAM_PARSER_IMPL_H
-#define INCLUDED_FAST_SQUARE_STREAM_PARSER_IMPL_H
+#ifndef INCLUDED_FAST_SQUARE_STREAM_PARSER_PORTS_IMPL_H
+#define INCLUDED_FAST_SQUARE_STREAM_PARSER_PORTS_IMPL_H
 
-#include <fast_square/stream_parser.h>
+#include <fast_square/stream_parser_ports.h>
 
 namespace gr {
 namespace fast_square {
 
-class stream_parser_impl : public stream_parser
+class stream_parser_ports_impl : public stream_parser_ports
 {
 private:
 	int d_packet_id;
@@ -17,8 +17,8 @@ private:
 protected:
 
 public:
-	stream_parser_impl(int message_id_base);
-	~stream_parser_impl();
+	stream_parser_ports_impl(int message_id_base);
+	~stream_parser_ports_impl();
 
 	void forecast(int noutput_items, gr_vector_int &ninput_items_required);
 	int general_work(int noutput_items,
@@ -30,4 +30,4 @@ public:
 } /* namespace fast_square */
 } /* namespace gr */
 
-#endif /* INCLUDED_FAST_SQUARE_STREAM_PARSER_IMPL_H */
+#endif /* INCLUDED_FAST_SQUARE_STREAM_PARSER_PORTS_IMPL_H */

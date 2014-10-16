@@ -3,7 +3,7 @@
 #include "config.h"
 #endif
 
-#include "stream_parser_impl.h"
+#include "stream_parser_ports_impl.h"
 #include <gnuradio/io_signature.h>
 #include <cstdio>
 #include <string>
@@ -12,13 +12,13 @@
 namespace gr {
 namespace fast_square {
 
-freq_stitcher::sptr freq_stitcher::make(int message_id_base){
+stream_parser_ports::sptr stream_parser_ports::make(int message_id_base){
 	return gnuradio::get_initial_sptr
-		(new stream_parser_impl(message_id_base));
+		(new stream_parser_ports_impl(message_id_base));
 }
 
-stream_parser_impl::stream_parser_impl(int message_id_base)
-	: sync_block("stream_parser",
+stream_parser_ports_impl::stream_parser_ports_impl(int message_id_base)
+	: sync_block("stream_parser_ports",
 			io_signature::make(4, 4, sizeof(gr_complex)),
 			io_signature::make(4, 4, FFT_SIZE*sizeof(gr_complex))),
 	d_packet_id(message_id_base)
@@ -31,7 +31,7 @@ stream_parser_impl::stream_parser_impl(int message_id_base)
 	data_history.resize(4);
 }
 
-stream_parser_impl::~stream_parser_impl(){
+stream_parser_ports_impl::~stream_parser_ports_impl(){
 }
 
 void ccsds_tm_conv_decoder_impl::forecast(int noutput_items, gr_vector_int &ninput_items_required){
@@ -40,7 +40,7 @@ void ccsds_tm_conv_decoder_impl::forecast(int noutput_items, gr_vector_int &ninp
 	}
 }
 
-int stream_parser_impl::work(int noutput_items,
+int stream_parser_ports_impl::work(int noutput_items,
 		gr_vector_int &ninput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items){
@@ -110,7 +110,7 @@ int stream_parser_impl::work(int noutput_items,
 	return out_count;
 }
 
-uint32_t stream_parser_impl::getSequenceNum(gr_complex data){
+uint32_t stream_parser_ports_impl::getSequenceNum(gr_complex data){
 	uint32_t real = (uint32_t)(data.real()*32767+65536);
 	uint32_t imag = (uint32_t)(data.imag()*32767+65536);
 	return real + 65536*imag;
