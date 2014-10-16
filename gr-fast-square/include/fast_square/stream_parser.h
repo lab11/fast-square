@@ -15,7 +15,7 @@ namespace gr {
       // gr::digital::framer_sink_1::sptr
       typedef boost::shared_ptr<stream_parser> sptr;
 
-      static sptr make(int message_id_base);
+      static sptr make();
     };
 
   } /* namespace fast_square */

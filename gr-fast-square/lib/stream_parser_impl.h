@@ -18,7 +18,7 @@ private:
 protected:
 
 public:
-	stream_parser_impl(int message_id_base);
+	stream_parser_impl();
 	~stream_parser_impl();
 
 	void forecast(int noutput_items, gr_vector_int &ninput_items_required);

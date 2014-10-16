@@ -20,8 +20,8 @@ prf_estimator::sptr prf_estimator::make(int prf_fft_size, bool forward, const st
 
 prf_estimator_impl::prf_estimator_impl(int prf_fft_size, bool forward, const std::vector<float> &window, bool shift, int nthreads, const std::string &tag_name)
 	: sync_block("prf_estimator",
-			io_signature::make(4, 4, NUM_STEPS * FFT_SIZE * sizeof(gr_complex)),
-			io_signature::make(4, 4, NUM_STEPS * FFT_SIZE * sizeof(gr_complex))),
+			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS * FFT_SIZE) * sizeof(gr_complex)),
+			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS * FFT_SIZE) * sizeof(gr_complex))),
 	d_fft_size(prf_fft_size), d_forward(forward), d_shift(shift)
 {
 	d_fft = new fft::fft_complex(d_fft_size, forward, nthreads);

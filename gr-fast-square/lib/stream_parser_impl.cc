@@ -12,16 +12,15 @@
 namespace gr {
 namespace fast_square {
 
-stream_parser::sptr stream_parser::make(int message_id_base){
+stream_parser::sptr stream_parser::make(){
 	return gnuradio::get_initial_sptr
-		(new stream_parser_impl(message_id_base));
+		(new stream_parser_impl());
 }
 
-stream_parser_impl::stream_parser_impl(int message_id_base)
+stream_parser_impl::stream_parser_impl()
 	: block("stream_parser",
 			io_signature::make(4, 4, sizeof(gr_complex)),
-			io_signature::make(4, 4, FFT_SIZE*sizeof(gr_complex))),
-	d_packet_id(message_id_base)
+			io_signature::make(4, 4, POW2_CEIL(FFT_SIZE)*sizeof(gr_complex)))
 {
 //	//Register message port for outgoing data packets
 //	message_port_register_out(pmt::mp("sequence_data_out"));
@@ -71,6 +70,7 @@ int stream_parser_impl::general_work(int noutput_items,
 				break;
 			} else {
 				uint32_t sequence_num = getSequenceNum(data_history[ii][SAMPLES_PER_SEQ-1]);
+				std::cout << "sequence_num = " << sequence_num << std::endl;
 	
 				//In case a sequence number has been skipped, delete any stale data
 				if(sequence_num > hsn && ii > 0){

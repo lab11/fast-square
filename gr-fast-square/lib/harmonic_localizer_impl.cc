@@ -20,8 +20,8 @@ harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_
 
 harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, int gatd_id, int nthreads)
 	: sync_block("harmonic_localizer",
-			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex)),
-			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex))),
+			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex)),
+			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex))),
 	d_gatd_id(gatd_id), d_connected(false)
 {
 	d_phasor_key = pmt::string_to_symbol(phasor_tag_name);

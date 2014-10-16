@@ -20,8 +20,8 @@ harmonic_extractor::sptr harmonic_extractor::make(int fft_size, int nthreads, co
 
 harmonic_extractor_impl::harmonic_extractor_impl(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name)
 	: sync_block("harmonic_extractor",
-			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex)),
-			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex))),
+			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex)),
+			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex))),
 	d_fft_size(fft_size)
 {
 	d_prf_key = pmt::string_to_symbol(prf_tag_name);

@@ -33,7 +33,7 @@ list(APPEND fast_square_sources
 )
 
 add_library(gnuradio-fast_square SHARED ${fast_square_sources})
-target_link_libraries(gnuradio-fast_square ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES})
+target_link_libraries(gnuradio-fast_square gnuradio-fft ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES})
 set_target_properties(gnuradio-fast_square PROPERTIES DEFINE_SYMBOL "gnuradio_fast_square_EXPORTS")
 
 ########################################################################
