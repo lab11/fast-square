@@ -23,7 +23,7 @@ private:
 	std::vector<gr_complex> d_actual_fft;
 	float d_prf_est;
 	gr_complex d_i;
-	int d_gatd_id;
+	std::string d_gatd_id;
 
 	//UDP stuff
 	bool   d_connected;       // are we connected?
@@ -49,7 +49,7 @@ private:
 protected:
 
 public:
-	harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, int gatd_id, int nthreads);
+	harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, const std::string &gatd_id, int nthreads);
 	~harmonic_localizer_impl();
 
 	void gatd_connect(const std::string &host, int port);

@@ -13,12 +13,12 @@
 namespace gr {
 namespace fast_square {
 
-harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, int gatd_id, int nthreads){
+harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, const std::string &gatd_id, int nthreads){
 	return gnuradio::get_initial_sptr
 		(new harmonic_localizer_impl(phasor_tag_name, hfreq_abs_tag_name, hfreq_tag_name, prf_tag_name, gatd_host, gatd_port, gatd_id, nthreads));
 }
 
-harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, int gatd_id, int nthreads)
+harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, const std::string &gatd_id, int nthreads)
 	: sync_block("harmonic_localizer",
 			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex)),
 			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex))),
@@ -162,7 +162,7 @@ std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<float> toas){
 	//Construct outgoing packet
 	uint8_t outgoing_packet[10+24]; //24 = 6*4
 	memset(&outgoing_packet[0], 0, 6);
-	memcpy(&outgoing_packet[6], &d_gatd_id, sizeof(d_gatd_id));
+	memcpy(&outgoing_packet[6], &d_gatd_id[0], d_gatd_id.size());
 	memcpy(&outgoing_packet[10], &x1, sizeof(x1));
 	memcpy(&outgoing_packet[14], &y1, sizeof(y1));
 	memcpy(&outgoing_packet[18], &z1, sizeof(z1));
