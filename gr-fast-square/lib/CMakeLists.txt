@@ -30,7 +30,6 @@ list(APPEND fast_square_sources
     harmonic_localizer_impl.cc
     prf_estimator_impl.cc
     stream_parser_impl.cc
-    stream_parser_ports_impl.cc
 )
 
 add_library(gnuradio-fast_square SHARED ${fast_square_sources})

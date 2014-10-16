@@ -12,7 +12,6 @@
 #include "fast_square/harmonic_localizer.h"
 #include "fast_square/prf_estimator.h"
 #include "fast_square/stream_parser.h"
-#include "fast_square/stream_parser_ports.h"
 %}
 
 
@@ -27,6 +26,3 @@ GR_SWIG_BLOCK_MAGIC2(fast_square, prf_estimator);
 
 %include "fast_square/stream_parser.h"
 GR_SWIG_BLOCK_MAGIC2(fast_square, stream_parser);
-
-%include "fast_square/stream_parser_ports.h"
-GR_SWIG_BLOCK_MAGIC2(fast_square, stream_parser_ports);

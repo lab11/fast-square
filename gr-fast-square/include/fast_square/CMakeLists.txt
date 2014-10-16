@@ -26,6 +26,5 @@ install(FILES
     harmonic_extractor.h
     harmonic_localizer.h
     prf_estimator.h
-    stream_parser.h
-    stream_parser_ports.h DESTINATION include/fast_square
+    stream_parser.h DESTINATION include/fast_square
 )
