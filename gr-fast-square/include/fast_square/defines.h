@@ -31,6 +31,7 @@
 
 #define NUM_HIST 10
 
+#define PRF_ACCURACY 20e-6
 #define COARSE_PRECISION 1e-7
 #define FINE_PRECISION 1e-9
 

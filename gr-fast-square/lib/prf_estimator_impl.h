@@ -4,6 +4,8 @@
 
 #include <fast_square/prf_estimator.h>
 #include <fast_square/defines.h>
+#include <gnuradio/fft/fft.h>
+#include <queue>
 
 namespace gr {
 namespace fast_square {
@@ -12,7 +14,7 @@ class prf_estimator_impl : public prf_estimator
 {
 private:
 	int d_fft_size;
-	fft_complex *d_fft;
+	fft::fft_complex *d_fft;
 	bool d_forward;
 	bool d_shift;
 	std::vector<float> d_window;
@@ -25,6 +27,10 @@ private:
 	std::vector<float> cand_freqs;
 	std::vector<std::vector<int> > cand_peaks;
 
+	void prfSearch_init();
+	float prfSearch_fast(float *data_fft_abs);
+	float calculateCenterFreqHarmonicNum(int step_num);
+	
 protected:
 
 public:

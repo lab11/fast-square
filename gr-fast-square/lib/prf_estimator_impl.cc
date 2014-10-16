@@ -24,12 +24,15 @@ prf_estimator_impl::prf_estimator_impl(int prf_fft_size, bool forward, const std
 			io_signature::make(4, 4, NUM_STEPS * FFT_SIZE * sizeof(gr_complex))),
 	d_fft_size(prf_fft_size), d_forward(forward), d_shift(shift)
 {
-	d_fft = new fft_complex(d_fft_size, forward, nthreads);
+	d_fft = new fft::fft_complex(d_fft_size, forward, nthreads);
 	if(!set_window(window))
 		throw std::runtime_error("fft_vcc: window not the same length as fft_size\n");
 
 	d_abs_array = new float[d_fft_size*NUM_STEPS];
-	prfSearch_init;
+	prfSearch_init();
+
+	std::stringstream str;
+	str << name() << unique_id();
 	d_me = pmt::string_to_symbol(str.str());
 	d_key = pmt::string_to_symbol(tag_name);
 
@@ -73,27 +76,26 @@ void prf_estimator_impl::prfSearch_init(){
 	}
 
 	//Initialize cand_peaks with appropriate indices based on each frequency
-	std::vector<int> cur_peak_array():
+	std::vector<int> cur_peak_array;
 	for(int ii=0; ii < cand_freqs.size(); ii++){
 		cur_peak_array.clear();
 		for(int jj=0; jj < NUM_STEPS; jj++){
 			float center_freq_harmonic_num = calculateCenterFreqHarmonicNum(jj);
-			for(float harmonic_num = -num_harmonics_present/4+.5; harmonic_num <= num_harmonics_present/4-.5; harmonic_num++){
-				float cur_peak_idx = FFT_LEN*(
+			for(float harmonic_num = -NUM_HARMONICS_PER_STEP/4+.5; harmonic_num <= NUM_HARMONICS_PER_STEP/4-.5; harmonic_num++){
+				float cur_peak_idx = d_fft_size*(
 						cand_freqs[ii]*harmonic_num+
 						(cand_freqs[ii]-PRF)*center_freq_harmonic_num-
 						TUNE_OFFSET
 					)/(SAMPLE_RATE/DECIM_FACTOR);
-				int cur_peak_idx_int = (round(cur_peak_idx) % d_fft_size) + (jj*d_fft_size);
-				cand_peak_array.push_back(cur_peak_idx_int);
+				int cur_peak_idx_int = ((int)(round(cur_peak_idx)) % d_fft_size) + (jj*d_fft_size);
+				cur_peak_array.push_back(cur_peak_idx_int);
 			}
 		}
 		cand_peaks.push_back(cur_peak_array);
 	}
 
 	//Set anything past FFT_SIZE to zero
-	if(count == 0)
-		memset(d_fft->get_inbuf()+FFT_SIZE, 0, d_fft_size-FFT_SIZE);
+	memset(d_fft->get_inbuf()+FFT_SIZE, 0, d_fft_size-FFT_SIZE);
 
 }
 
@@ -137,7 +139,7 @@ int prf_estimator_impl::work(int noutput_items,
 	//PRF estimation logic
 	while(count < noutput_items) {
 		for(int ii = 0; ii < NUM_STEPS; ii++){
-			gr_complex *in = (gr_complex *) &input_items[PRF_EST_ANCHOR][ii*FFT_SIZE];
+			gr_complex *in = ((gr_complex *) &input_items[PRF_EST_ANCHOR]) + ii*FFT_SIZE;
 			// copy input into optimally aligned buffer
 			if(d_window.size()) {
 				gr_complex *dst = d_fft->get_inbuf();
