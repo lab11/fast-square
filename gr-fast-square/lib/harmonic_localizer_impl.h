@@ -4,6 +4,8 @@
 
 #include <fast_square/harmonic_localizer.h>
 #include <fast_square/defines.h>
+#include <gnuradio/fft/fft.h>
+#include <boost/asio.hpp>
 
 namespace gr {
 namespace fast_square {
@@ -11,7 +13,7 @@ namespace fast_square {
 class harmonic_localizer_impl : public harmonic_localizer
 {
 private:
-	fft_complex *d_fft;
+	fft::fft_complex *d_fft;
 	pmt::pmt_t d_phasor_key, d_hfreq_key, d_hfreq_abs_key, d_prf_key;
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<float> d_harmonic_freqs;
@@ -34,9 +36,9 @@ private:
 	void readActualFFT();
 	std::vector<float> tdoa4(std::vector<float> toas);
 	void genFFTWindow();
-	gr_complex polyval(std::vector<gr_complex> &p, gr_complex x);
-	std::vector<gr_complex> freqz(std::vector<gr_complex> &b, std::vector<gr_complex> &a, std::vector<float> &w);
-	std::vector<gr_complex> freqs(std::vector<gr_complex> &b, std::vector<gr_complex> &a, std::vector<float> &w);
+	gr_complex polyval(std::vector<float> &p, gr_complex x);
+	std::vector<gr_complex> freqz(std::vector<float> &b, std::vector<float> &a, std::vector<float> &w);
+	std::vector<gr_complex> freqs(std::vector<float> &b, std::vector<float> &a, std::vector<float> &w);
 	std::vector<int> extractToAs(std::vector<gr_complex> hp_rearranged, float *imp_thresholds);
 	void correctCOMBPhase();
 	void compensateRCLP();

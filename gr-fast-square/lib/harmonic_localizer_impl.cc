@@ -18,7 +18,7 @@ harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_
 		(new harmonic_localizer_impl(phasor_tag_name, hfreq_abs_tag_name, hfreq_tag_name, prf_tag_name, gatd_host, gatd_port, gatd_id, nthreads));
 }
 
-harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, int gatd_id, int nthreads)
+harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, int gatd_id, int nthreads)
 	: sync_block("harmonic_localizer",
 			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex)),
 			io_signature::make(4, 4, NUM_STEPS*FFT_SIZE*sizeof(gr_complex))),
@@ -34,7 +34,7 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	readActualFFT();
 
 	// Get the destination address
-	connect(gatd_host, gatd_port);
+	gatd_connect(gatd_host, gatd_port);
 
 	//Pre-calculated vector generated for compensateStepTime step
 	for(int ii=0; ii < NUM_ANCHORS * NUM_STEPS * NUM_HARMONICS_PER_STEP; ii++){
@@ -44,7 +44,7 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	//Pre-compute hamming window for later use in super-resolution generation of impulse response plots
 	genFFTWindow();
 
-	d_fft = new fft_complex(NUM_HARM_PER_STEP_POST*NUM_STEPS*INTERP, true, nthreads);
+	d_fft = new fft::fft_complex(NUM_HARM_PER_STEP_POST*NUM_STEPS*INTERP, true, nthreads);
 	
 	const int alignment_multiple =
 		volk_get_alignment() / sizeof(gr_complex);
@@ -58,7 +58,7 @@ harmonic_localizer_impl::~harmonic_localizer_impl(){
 
 void harmonic_localizer_impl::gatd_connect(const std::string &host, int port){
 	if(d_connected)
-		disconnect();
+		gatd_disconnect();
 	
 	std::string s_port = (boost::format("%d")%port).str();
 	if(host.size() > 0) {
@@ -84,14 +84,6 @@ void harmonic_localizer_impl::gatd_disconnect(){
 
   gr::thread::scoped_lock guard(d_mutex);  // protect d_socket from work()
 
-  // Send a few zero-length packets to signal receiver we are done
-  boost::array<char, 1> send_buf = {{ 0 }};
-  if(d_eof) {
-    int i;
-    for(i = 0; i < 3; i++)
-      d_socket->send_to(boost::asio::buffer(send_buf), d_endpoint);
-  }
-
   d_socket->close();
   delete d_socket;
 
@@ -106,8 +98,9 @@ void harmonic_localizer_impl::readActualFFT(){
 		
 	//Read complex numbers in one at a time
 	for(int ii=0; ii < NUM_STEPS*NUM_HARM_PER_STEP_POST; ii++){
-		gr_complex cur_phasor;
-		source >> cur_phasor.real >> cur_phasor.imag;
+		float real, imag;
+		source >> real >> imag;
+		gr_complex cur_phasor(real, imag);
 		d_actual_fft.push_back(cur_phasor);
 	}
 	
@@ -181,15 +174,13 @@ std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<float> toas){
 	gr::thread::scoped_lock guard(d_mutex);  // protect d_socket
 	if(d_connected) {
 		try {
-			r = d_socket->send_to(boost::asio::buffer((void*)(outgoing_packet), 34),
+			d_socket->send_to(boost::asio::buffer((void*)(outgoing_packet), 34),
 			                     d_endpoint);
 		}
 		catch(std::exception& e) {
 			GR_LOG_ERROR(d_logger, boost::format("send error: %s") % e.what());
-			return -1;
 		}
 	}
-
 }
 
 void harmonic_localizer_impl::genFFTWindow(){
@@ -205,7 +196,7 @@ void harmonic_localizer_impl::genFFTWindow(){
 	for(int ii=0; ii < FFT_SIZE/2; ii++){
 		d_fft_window.push_back(d_fft_window[ii]);
 	}
-	d_fft_window.erase(d_fft_window.begin(), d_fft_window.begin+FFT_SIZE/2);
+	d_fft_window.erase(d_fft_window.begin(), d_fft_window.begin()+FFT_SIZE/2);
 }
 
 gr_complex harmonic_localizer_impl::polyval(std::vector<float> &p, gr_complex x){
@@ -257,11 +248,11 @@ void harmonic_localizer_impl::correctCOMBPhase(){
 	std::vector<float> w(d_harmonic_freqs);
 	for(int ii=0; ii < w.size(); ii++)
 		w[ii] = w[ii]/SAMPLE_RATE;
-	std::vector<gr_complex> comb_h = freqz(b, a, w);
+	std::vector<gr_complex> comb_h = freqz(b_v, a_v, w);
 
 	//Correct any imparted amplitude/phase from the two cascaded COMB filters
 	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
-		d_harmonic_phasors[ii] = d_harmonic_phasors[ii]./comb_h[ii%comb_h.size()]./comb_h[ii%comb_h.size()];
+		d_harmonic_phasors[ii] = d_harmonic_phasors[ii]/comb_h[ii%comb_h.size()]/comb_h[ii%comb_h.size()];
 	}
 }
 
@@ -279,7 +270,7 @@ void harmonic_localizer_impl::compensateRCLP(){
 	static std::vector<float> a_v(a, a+sizeof(a)/sizeof(float));
 	
 	//Calculate phasor imparted by RC low-pass filter
-	std::vector<gr_complex> rc_phase = freqs(b, a, d_harmonic_freqs);
+	std::vector<gr_complex> rc_phase = freqs(b_v, a_v, d_harmonic_freqs);
 	
 	//Correct any imparted amplitude/phase from the RC low-pass filter
 	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
@@ -303,7 +294,7 @@ void harmonic_localizer_impl::compensateRCHP(){
 	std::vector<float> w(d_harmonic_freqs);
 	for(int ii=0; ii < w.size(); ii++)
 		w[ii] = w[ii]+IF_FREQ;
-	std::vector<gr_complex> rc_phase = freqs(b, a, w);
+	std::vector<gr_complex> rc_phase = freqs(b_v, a_v, w);
 
 	//Correct any imparted amplitude/phase from the RC high-pass filter
 	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
@@ -326,7 +317,7 @@ void harmonic_localizer_impl::compensateStepTime(){
 	//Correct any imparted phase from the time difference between observations
 	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
 		float phase_corr = d_harmonic_freqs[ii]*d_time_delay_in_samples[ii];
-		d_harmonic_phasors[ii] = d_harmonic_phasors[ii]*std::exp(-d_i*phase_corr/(SAMPLE_RATE/DECIM_FACTOR));
+		d_harmonic_phasors[ii] = d_harmonic_phasors[ii]*std::exp((-d_i*phase_corr)/gr_complex(SAMPLE_RATE/DECIM_FACTOR,0));
 	}
 }
 
@@ -410,8 +401,8 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 		//Perform IFFT on zero-padded array to obtain super-resolution CIR
 
 		//Start by copying the current phasors into the appropriate array
-		std::copy(hp_rearranged + anchor_idx, hp_rearranged + anchor_idx + FFT_SIZE_POST/2, fft_array.begin());
-		std::copy(hp_rearranged + anchor_idx + FFT_SIZE_POST/2, hp_rearranged + anchor_idx + FFT_SIZE_POST, fft_array.end() - FFT_SIZE_POST/2);
+		std::copy(hp_rearranged.begin() + anchor_idx, hp_rearranged.begin() + anchor_idx + FFT_SIZE_POST/2, fft_array.begin());
+		std::copy(hp_rearranged.begin() + anchor_idx + FFT_SIZE_POST/2, hp_rearranged.begin() + anchor_idx + FFT_SIZE_POST, fft_array.end() - FFT_SIZE_POST/2);
 
 		//Then perform FFT
 		memcpy(d_fft->get_inbuf(), &fft_array[0], FFT_SIZE_POST);
@@ -430,7 +421,7 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 				cir_mag[FFT_SIZE_POST-jj] = temp_mag;
 			}
 			if(cir_mag[jj] > max_mag){
-				max_mag = cir_mag;
+				max_mag = cir_mag[jj];
 				max_mag_idx = jj;
 			}
 		}
@@ -442,12 +433,12 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 		for(int jj=0; jj < FFT_SIZE_POST; jj++){
 			cur_idx--;
 			if(cur_idx < 0) cur_idx = FFT_SIZE_POST-1;
-			if(cir_mag[toa_idx] < imp_thresholds[ii]){
+			if(cir_mag[cur_idx] < imp_thresholds[ii]){
 				below_threshold_count++;
-				if(below_treshold_count < FFT_SIZE_POST/4) break;
+				if(below_threshold_count < FFT_SIZE_POST/4) break;
 			} else {
 				cand_toa_idx = cur_idx;
-				below_treshold_count = 0;
+				below_threshold_count = 0;
 			}
 		}
 		toas[ii] = cand_toa_idx;
@@ -517,6 +508,8 @@ int harmonic_localizer_impl::work(int noutput_items,
 	gr_complex *out = (gr_complex *) output_items[0];
 	int count=0;
 	int out_count = 0;
+	std::vector<tag_t> tags;
+	const uint64_t nread = nitems_read(0);
 
 	while(count < noutput_items){
 		//Extract PRF estimate from tag
