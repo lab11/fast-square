@@ -41,8 +41,8 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	param_freq = 5.792e9
 	self.bbg=0
 	self.gc1=70
-	self.if_freq = 960e6
-	self.bw = 64e6
+	self.if_freq = 990e6
+	self.bw = 64e6#40e6
 	self.square_freq = 4e6
 	self.num_steps = 32
 	self.lo_start_freq = 5.312e9
@@ -51,6 +51,9 @@ class uhd_fft(grc_wxgui.top_block_gui):
         self.param_gain = param_gain
         self.address = address
 	self.address2 = address2
+	self.dead_on_freq = 5.792e9
+	self.tag_freq = 5.792042e9#5.7919847e9
+	self.tune_freq = self.if_freq+self.tag_freq-self.dead_on_freq
 
 	self.offset_freq = 10e3
 
@@ -83,7 +86,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 		g = self.source.get_gain_range(0)
 		print "rx gain range is (%f,%f)" % (g.start(),g.stop())
 	        self.source.set_subdev_spec("A:0 B:0")
-	        self.source.set_center_freq(self.if_freq, 0)
+	        self.source.set_center_freq(self.tune_freq, 0)
 	        self.source.set_gain(gain, 0)
 		#self.source.set_antenna("RX2", 0)
 		#self.source.set_gain(self.bbg, "BBG", 0)
@@ -92,7 +95,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 
 		#Channel 1
 		g = self.source.get_gain_range(1)
-	        self.source.set_center_freq(self.if_freq, 1) #Mixer @ 4992 MHz
+	        self.source.set_center_freq(self.tune_freq, 1) #Mixer @ 4992 MHz
 	        self.source.set_gain(gain, 1)
 		#self.source.set_antenna("RX2", 1)
 		#self.source.set_gain(self.bbg, "BBG", 1)
@@ -112,7 +115,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 		g = self.source2.get_gain_range(0)
 		print "rx gain range is (%f,%f)" % (g.start(),g.stop())
 	        self.source2.set_subdev_spec("A:0 B:0")
-	        self.source2.set_center_freq(self.if_freq, 0)
+	        self.source2.set_center_freq(self.tune_freq, 0)
 	        self.source2.set_gain(gain, 0)
 		#self.source2.set_antenna("RX2", 0)
 		#self.source2.set_gain(self.bbg, "BBG", 0)
@@ -121,7 +124,7 @@ class uhd_fft(grc_wxgui.top_block_gui):
 
 		#Channel 1
 		g = self.source2.get_gain_range(1)
-	        self.source2.set_center_freq(self.if_freq, 1) #Mixer @ 4992 MHz
+	        self.source2.set_center_freq(self.tune_freq, 1) #Mixer @ 4992 MHz
 	        self.source2.set_gain(gain, 1)
 		#self.source2.set_antenna("RX2", 1)
 		#self.source2.set_gain(self.bbg, "BBG", 1)
@@ -168,9 +171,9 @@ if __name__ == '__main__':
         help="Set Default Frequency [default=%default]")
     parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(70),
         help="Set Default Gain [default=%default]")
-    parser.add_option("-a", "--address", dest="address", type="string", default="serial=9R24X1U1, fpga=usrp1_bb_comb.rbf",
+    parser.add_option("-a", "--address", dest="address", type="string", default="serial=9R24X1U1, fpga=usrp1_bb_comb_2mhz.rbf",
         help="Set IP Address [default=%default]")
-    parser.add_option("--address2", dest="address2", type="string", default="serial=7R24X9U1, fpga=usrp1_bb_comb.rbf",
+    parser.add_option("--address2", dest="address2", type="string", default="serial=7R24X9U1, fpga=usrp1_bb_comb_2mhz.rbf",
         help="Set IP Address [default=%default]")
     parser.add_option("--test", action="store_true", default=False,
         help="Feed with data from test file")
@@ -179,5 +182,8 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args()
     tb = uhd_fft(param_samp_rate=options.param_samp_rate, param_freq=options.param_freq, param_gain=options.param_gain, address=options.address, address2=options.address2)
     tb.Start(True)
-    tb.Wait()
+    time.sleep(100.0)
+    tb.lock()
+    tb.stop()
+    #tb.Wait()
 
