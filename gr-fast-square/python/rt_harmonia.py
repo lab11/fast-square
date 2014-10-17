@@ -172,10 +172,10 @@ class uhd_fft(grc_wxgui.top_block_gui):
 			self.connect((self.source2, 0), (self.parser, 2))
 			self.connect((self.source2, 1), (self.parser, 3))
 
-		#The rest of the harmonia flowgraph
-		self.prf_est = fast_square.prf_estimator(1024, True, None, False, 1, "prf_est")
-		self.h_extract = fast_square.harmonic_extractor(1024, 1, "prf_est", "phasor_calc", "harmonic_freqs_abs", "harmonic_freqs")
-		self.h_locate = fast_square.harmonic_localizer("phasor_calc", "harmonic_freqs_abs", "harmonic_freqs", "prf_est", "inductor.eecs.umich.edu", 4001, "Sek5SXpFPa", 1)
+		##The rest of the harmonia flowgraph
+		#self.prf_est = fast_square.prf_estimator(1024, True, None, False, 1, "prf_est")
+		#self.h_extract = fast_square.harmonic_extractor(1024, 1, "prf_est", "phasor_calc", "harmonic_freqs_abs", "harmonic_freqs")
+		#self.h_locate = fast_square.harmonic_localizer("phasor_calc", "harmonic_freqs_abs", "harmonic_freqs", "prf_est", "inductor.eecs.umich.edu", 4001, "Sek5SXpFPa", 1)
 
 if __name__ == '__main__':
     parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
