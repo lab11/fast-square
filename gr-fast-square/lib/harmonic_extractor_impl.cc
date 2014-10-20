@@ -54,6 +54,8 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_init(){
 	d_sp_idxs.clear();
 	for(int ii=0; ii < harmonic_nums.size(); ii++){
 		int cur_sp_idx = (int)(round(1.0*FFT_SIZE*harmonic_nums[ii]*PRF/(SAMPLE_RATE/DECIM_FACTOR))) % FFT_SIZE;
+		if(cur_sp_idx < 0)
+			cur_sp_idx += FFT_SIZE;
 		d_sp_idxs.push_back(cur_sp_idx);
 	}
 
@@ -118,11 +120,10 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data
 
 		//Extract harmonics based on indices computed previously
 		for(int jj=0; jj < d_sp_idxs.size(); jj++){
-			d_harmonic_phasors.push_back(d_fft->get_outbuf()[d_sp_idxs[ii]]);
+			d_harmonic_phasors.push_back(d_fft->get_outbuf()[d_sp_idxs[jj]]);
 			d_harmonic_freqs_abs.push_back(d_harmonic_nums_abs[ii][jj]*d_prf_est);
 			d_harmonic_freqs.push_back((d_harmonic_nums_abs[ii][jj]-center_freq_harmonic_num)*d_prf_est);
 		}
-	std::cout << "GOT HERE " << ii << std::endl;
 
 		data += FFT_SIZE;
 	}
