@@ -64,7 +64,6 @@ int stream_parser_impl::general_work(int noutput_items,
 	int hsn_idx = 0;
 	while(snapshot_flag){
 		for(int ii=0; ii < input_items.size();){
-			std::cout << "ii = " << ii << std::endl;
 			while(data_history[ii].size() > SAMPLES_PER_SEQ && data_history[ii][SAMPLES_PER_SEQ].imag() > -1.0){
 				data_history[ii].pop_front();
 			}
@@ -73,22 +72,16 @@ int stream_parser_impl::general_work(int noutput_items,
 				snapshot_flag = false;
 				break;
 			} else {
-				for(int jj=0; jj < input_items.size(); jj++)
-					std::cout << data_history[jj].size() << " ";
-				std::cout << std::endl;
-
 				uint32_t sequence_num = getSequenceNum(data_history[ii][SAMPLES_PER_SEQ-1]);
 				std::cout << "ii = " << ii << " input_items.size() = " << input_items.size() << " SAMPLES_PER_SEQ = " << SAMPLES_PER_SEQ << " sequence_num = " << sequence_num << " imag = " << data_history[ii][SAMPLES_PER_SEQ-1].imag() << " real = " << data_history[ii][SAMPLES_PER_SEQ-1].real() << std::endl;
 	
 				//In case a sequence number has been skipped, delete any stale data
 				if(sequence_num > hsn && ii > 0){
-					std::cout << "GOT HERE 1" << std::endl;
 					hsn = sequence_num;
 					hsn_idx = ii;
 					ii = 0;
 					continue;
 				} else if(sequence_num < hsn){
-					std::cout << "GOT HERE 2" << std::endl;
 					data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ);
 					ii = 0;
 					continue;
@@ -101,6 +94,7 @@ int stream_parser_impl::general_work(int noutput_items,
 		if(snapshot_flag){
 			for(int ii=0; ii < input_items.size(); ii++){
 				memcpy(((gr_complex *) output_items[ii]), &data_history[ii][0], FFT_SIZE*sizeof(gr_complex));
+				data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ);
 			}
 			out_count++;
 	
