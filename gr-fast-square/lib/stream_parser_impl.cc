@@ -20,10 +20,9 @@ stream_parser::sptr stream_parser::make(){
 stream_parser_impl::stream_parser_impl()
 	: block("stream_parser",
 			io_signature::make(4, 4, sizeof(gr_complex)),
-			io_signature::make(4, 4, POW2_CEIL(FFT_SIZE)*sizeof(gr_complex)))
+			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex)))
 {
-//	//Register message port for outgoing data packets
-//	message_port_register_out(pmt::mp("sequence_data_out"));
+	d_output_per_seq = POW2_CEIL(NUM_STEPS*FFT_SIZE);
 
 	data_history.resize(4);
 }
@@ -42,8 +41,8 @@ int stream_parser_impl::general_work(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items){
 
-	gr_complex *out = (gr_complex *) output_items[0];
 	int out_count = 0;
+	int output_offset = 0;
 
 	//Loop over all anchors
 	for(int ii=0; ii < input_items.size(); ii++){
@@ -73,10 +72,10 @@ int stream_parser_impl::general_work(int noutput_items,
 				break;
 			} else {
 				uint32_t sequence_num = getSequenceNum(data_history[ii][SAMPLES_PER_SEQ-1]);
-				std::cout << "ii = " << ii << " input_items.size() = " << input_items.size() << " SAMPLES_PER_SEQ = " << SAMPLES_PER_SEQ << " sequence_num = " << sequence_num << " imag = " << data_history[ii][SAMPLES_PER_SEQ-1].imag() << " real = " << data_history[ii][SAMPLES_PER_SEQ-1].real() << std::endl;
 	
 				//In case a sequence number has been skipped, delete any stale data
 				if(sequence_num > hsn && ii > 0){
+					std::cout << "ii = " << ii << " input_items.size() = " << input_items.size() << " SAMPLES_PER_SEQ = " << SAMPLES_PER_SEQ << " sequence_num = " << sequence_num << " imag = " << data_history[ii][SAMPLES_PER_SEQ-1].imag() << " real = " << data_history[ii][SAMPLES_PER_SEQ-1].real() << std::endl;
 					hsn = sequence_num;
 					hsn_idx = ii;
 					ii = 0;
@@ -92,11 +91,19 @@ int stream_parser_impl::general_work(int noutput_items,
 	
 		//If snapshot_flag is set, it means we have a full snapshot and all data is aligned in data_history
 		if(snapshot_flag){
+			if(out_count < noutput_items){
 			for(int ii=0; ii < input_items.size(); ii++){
-				memcpy(((gr_complex *) output_items[ii]), &data_history[ii][0], FFT_SIZE*sizeof(gr_complex));
+				for(int jj=0; jj < NUM_STEPS; jj++){
+					int cur_data_idx = SKIP_SAMPLES + SAMPLES_PER_FREQ*jj;
+
+					//Have to use std::copy since deque isn't contiguous
+					std::copy(data_history[ii].begin() + cur_data_idx, data_history[ii].begin() + (cur_data_idx + FFT_SIZE), ((gr_complex *)(output_items[ii])) + jj*FFT_SIZE+output_offset);
+				}
 				data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ);
 			}
+			output_offset += d_output_per_seq;
 			out_count++;
+			}
 	
 			////Prepare an outgoing message containing all data
 			//pmt::pmt_t new_message_dict = pmt::make_dict();

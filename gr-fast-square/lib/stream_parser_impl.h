@@ -12,6 +12,7 @@ class stream_parser_impl : public stream_parser
 {
 private:
 	int d_packet_id;
+	int d_output_per_seq;
 	std::vector<std::deque<gr_complex> > data_history;
 	uint32_t getSequenceNum(gr_complex data);
 
