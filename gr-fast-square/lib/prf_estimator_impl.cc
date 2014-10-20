@@ -139,7 +139,7 @@ int prf_estimator_impl::work(int noutput_items,
 	//PRF estimation logic
 	while(count < noutput_items) {
 		for(int ii = 0; ii < NUM_STEPS; ii++){
-			gr_complex *in = ((gr_complex *) &input_items[PRF_EST_ANCHOR]) + ii*FFT_SIZE;
+			gr_complex *in = ((gr_complex *) input_items[PRF_EST_ANCHOR]) + ii*FFT_SIZE;
 			// copy input into optimally aligned buffer
 			if(d_window.size()) {
 				gr_complex *dst = d_fft->get_inbuf();
@@ -179,6 +179,8 @@ int prf_estimator_impl::work(int noutput_items,
 
 		//Perform PRF estimation
 		float prf_est = prfSearch_fast(d_abs_array);
+
+		std::cout << "lowest freq = " << cand_freqs[0] << " highest freq = " << cand_freqs[cand_freqs.size()-1] << " prf_est = " << prf_est << std::endl;
 	
 		//Attach tag to the data stream with the derived PRF estimate
 		add_item_tag(0, //stream ID

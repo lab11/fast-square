@@ -122,6 +122,7 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data
 			d_harmonic_freqs_abs.push_back(d_harmonic_nums_abs[ii][jj]*d_prf_est);
 			d_harmonic_freqs.push_back((d_harmonic_nums_abs[ii][jj]-center_freq_harmonic_num)*d_prf_est);
 		}
+	std::cout << "GOT HERE " << ii << std::endl;
 
 		data += FFT_SIZE;
 	}
@@ -130,6 +131,7 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data
 int harmonic_extractor_impl::work(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items){
+
 
 	std::vector<tag_t> tags;
 	const gr_complex *in = (const gr_complex *) input_items[0];
