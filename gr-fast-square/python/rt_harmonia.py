@@ -175,15 +175,24 @@ class uhd_fft(grc_wxgui.top_block_gui):
 		self.connect((self.prf_est, 1), (self.h_extract, 1))
 		self.connect((self.prf_est, 2), (self.h_extract, 2))
 		self.connect((self.prf_est, 3), (self.h_extract, 3))
-		self.ns0 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
-		self.ns1 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
-		self.ns2 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
-		self.ns3 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
-		self.connect((self.h_extract, 0), self.ns0)
-		self.connect((self.h_extract, 1), self.ns1)
-		self.connect((self.h_extract, 2), self.ns2)
-		self.connect((self.h_extract, 3), self.ns3)
-		#self.h_locate = fast_square.harmonic_localizer("phasor_calc", "harmonic_freqs_abs", "harmonic_freqs", "prf_est", "inductor.eecs.umich.edu", 4001, "Sek5SXpFPa", 1)
+		self.h_locate = fast_square.harmonic_localizer("phasor_calc", "harmonic_freqs_abs", "harmonic_freqs", "prf_est", "Sek5SXpFPa", 1)
+		self.connect((self.h_extract, 0), (self.h_locate, 0))
+		self.connect((self.h_extract, 1), (self.h_locate, 1))
+		self.connect((self.h_extract, 2), (self.h_locate, 2))
+		self.connect((self.h_extract, 3), (self.h_locate, 3))
+
+		#TODO: Put this back in once we want to push to gatd
+#		self.socket_pdu = blocks.socket_pdu("UDP_CLIENT", "inductor.eecs.umich.edu", "4001", 10000)
+#		self.msg_connect(self.h_locate, "frame_out", self.socket_pdu, "pdus")
+
+		#self.ns0 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
+		#self.ns1 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
+		#self.ns2 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
+		#self.ns3 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
+		#self.connect((self.h_extract, 0), self.ns0)
+		#self.connect((self.h_extract, 1), self.ns1)
+		#self.connect((self.h_extract, 2), self.ns2)
+		#self.connect((self.h_extract, 3), self.ns3)
 
 if __name__ == '__main__':
     parser = OptionParser(option_class=eng_option, usage="%prog: [options]")

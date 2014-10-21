@@ -13,16 +13,16 @@
 namespace gr {
 namespace fast_square {
 
-harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, const std::string &gatd_id, int nthreads){
+harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_id, int nthreads){
 	return gnuradio::get_initial_sptr
-		(new harmonic_localizer_impl(phasor_tag_name, hfreq_abs_tag_name, hfreq_tag_name, prf_tag_name, gatd_host, gatd_port, gatd_id, nthreads));
+		(new harmonic_localizer_impl(phasor_tag_name, hfreq_abs_tag_name, hfreq_tag_name, prf_tag_name, gatd_id, nthreads));
 }
 
-harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_host, int gatd_port, const std::string &gatd_id, int nthreads)
+harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_id, int nthreads)
 	: sync_block("harmonic_localizer",
 			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex)),
-			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex))),
-	d_gatd_id(gatd_id), d_connected(false)
+			io_signature::make(0, 0, 0)),
+	d_gatd_id(gatd_id)
 {
 	d_phasor_key = pmt::string_to_symbol(phasor_tag_name);
 	d_hfreq_key = pmt::string_to_symbol(hfreq_tag_name);
@@ -32,9 +32,6 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	d_i = gr_complex(0, 1);
 
 	readActualFFT();
-
-	// Get the destination address
-	gatd_connect(gatd_host, gatd_port);
 
 	//Pre-calculated vector generated for compensateStepTime step
 	for(int ii=0; ii < NUM_ANCHORS * NUM_STEPS * NUM_HARMONICS_PER_STEP; ii++){
@@ -49,47 +46,13 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	const int alignment_multiple =
 		volk_get_alignment() / sizeof(gr_complex);
 	set_alignment(std::max(1, alignment_multiple));
+
+	//Message port for UDP to GATD
+	message_port_register_out(pmt::mp("frame_out"));
 }
 
 harmonic_localizer_impl::~harmonic_localizer_impl(){
-      if(d_connected)
-        gatd_disconnect();
 }
-
-void harmonic_localizer_impl::gatd_connect(const std::string &host, int port){
-	if(d_connected)
-		gatd_disconnect();
-	
-	std::string s_port = (boost::format("%d")%port).str();
-	if(host.size() > 0) {
-		boost::asio::ip::udp::resolver resolver(d_io_service);
-		boost::asio::ip::udp::resolver::query query(boost::asio::ip::udp::v4(),
-		                                            host, s_port,
-		                                            boost::asio::ip::resolver_query_base::passive);
-		d_endpoint = *resolver.resolve(query);
-		
-		d_socket = new boost::asio::ip::udp::socket(d_io_service);
-		d_socket->open(boost::asio::ip::udp::v4());
-		
-		boost::asio::socket_base::reuse_address roption(true);
-		d_socket->set_option(roption);
-		
-		d_connected = true;
-	}
-}
-
-void harmonic_localizer_impl::gatd_disconnect(){
-  if(!d_connected)
-    return;
-
-  gr::thread::scoped_lock guard(d_mutex);  // protect d_socket from work()
-
-  d_socket->close();
-  delete d_socket;
-
-  d_connected = false;
-}
-
 
 void harmonic_localizer_impl::readActualFFT(){
 	//Open file for reading
@@ -159,28 +122,29 @@ std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<float> toas){
 	float y1=a*x1+b*z1+c;
 	float y2=a*x2+b*z2+c;
 
+	std::vector<float> ret;
+	ret.push_back(x1);
+	ret.push_back(y1);
+	ret.push_back(z1);
+	ret.push_back(x2);
+	ret.push_back(y2);
+	ret.push_back(z2);
+
+	return ret;
+}
+
+void harmonic_localizer_impl::sendToGATD(std::vector<float> &positions){
+
 	//Construct outgoing packet
+	//TODO: These magic numbers are kind of ugly...
 	uint8_t outgoing_packet[10+24]; //24 = 6*4
-	memset(&outgoing_packet[0], 0, 6);
-	memcpy(&outgoing_packet[6], &d_gatd_id[0], d_gatd_id.size());
-	memcpy(&outgoing_packet[10], &x1, sizeof(x1));
-	memcpy(&outgoing_packet[14], &y1, sizeof(y1));
-	memcpy(&outgoing_packet[18], &z1, sizeof(z1));
-	memcpy(&outgoing_packet[22], &x2, sizeof(x2));
-	memcpy(&outgoing_packet[26], &y2, sizeof(y2));
-	memcpy(&outgoing_packet[30], &z2, sizeof(z2));
+	memcpy(&outgoing_packet[0], &d_gatd_id[0], d_gatd_id.size());
+	memcpy(&outgoing_packet[10], &positions[0], positions.size()*sizeof(float));
 
 	//Push to GATD
-	gr::thread::scoped_lock guard(d_mutex);  // protect d_socket
-	if(d_connected) {
-		try {
-			d_socket->send_to(boost::asio::buffer((void*)(outgoing_packet), 34),
-			                     d_endpoint);
-		}
-		catch(std::exception& e) {
-			GR_LOG_ERROR(d_logger, boost::format("send error: %s") % e.what());
-		}
-	}
+	pmt::pmt_t value = pmt::init_u8vector(34, outgoing_packet);
+	pmt::pmt_t new_message = pmt::cons(pmt::PMT_NIL, value);
+	message_port_pub(pmt::mp("frame_out"), new_message);
 }
 
 void harmonic_localizer_impl::genFFTWindow(){
@@ -441,7 +405,7 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 				below_threshold_count = 0;
 			}
 		}
-		toas[ii] = cand_toa_idx;
+		toas.push_back(cand_toa_idx);
 	}
 
 	//Rotate ToAs so that ToA of the first anchor ends up in the middle in order to avoid issues where ToAs span 
@@ -497,15 +461,16 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	}
 	
 	//Finally, determine position based on calculated ToAs...
-	tdoa4(imp_in_meters);
+	std::vector<float> positions = tdoa4(imp_in_meters);
+	sendToGATD(positions);
 }
 
 int harmonic_localizer_impl::work(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items){
 
+
 	const gr_complex *in = (const gr_complex *) input_items[0];
-	gr_complex *out = (gr_complex *) output_items[0];
 	int count=0;
 	int out_count = 0;
 	std::vector<tag_t> tags;
@@ -531,6 +496,8 @@ int harmonic_localizer_impl::work(int noutput_items,
 		compensateRCHP();
 		compensateStepTime();
 		harmonicLocalization();
+
+		count++;
 	}   // while
 
 	return noutput_items;
