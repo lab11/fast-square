@@ -97,12 +97,6 @@ int stream_parser_impl::general_work(int noutput_items,
 
 					//Have to use std::copy since deque isn't contiguous
 					std::copy(data_history[ii].begin() + cur_data_idx, data_history[ii].begin() + (cur_data_idx + FFT_SIZE), ((gr_complex *)(output_items[ii])) + jj*FFT_SIZE+output_offset);
-					if(d_hsn == 2){
-						std::cout << "Anchor " << ii << " step " << jj << std::endl;
-						for(int kk=0; kk < FFT_SIZE; kk++){
-							std::cout << data_history[ii][cur_data_idx+kk] << std::endl;
-						}
-					}
 				}
 				data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ-1);
 			}
