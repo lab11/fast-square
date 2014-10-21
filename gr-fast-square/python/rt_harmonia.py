@@ -30,10 +30,10 @@ import math
 import scopesink_cir
 import fast_square
 
-class uhd_fft(grc_wxgui.top_block_gui):
+class uhd_fft(gr.top_block):
 
     def __init__(self, param_samp_rate, param_freq, param_gain, address, address2):
-        grc_wxgui.top_block_gui.__init__(self, title="REAL-TIME HARMONIA")
+        super(uhd_fft, self).__init__()
 
         ##################################################
         # Parameters
@@ -212,9 +212,10 @@ if __name__ == '__main__':
         help="Read USRP data stream from file")
     (options, args) = parser.parse_args()
     tb = uhd_fft(param_samp_rate=options.param_samp_rate, param_freq=options.param_freq, param_gain=options.param_gain, address=options.address, address2=options.address2)
-    tb.Start(True)
-    time.sleep(100.0)
-    tb.lock()
-    tb.stop()
-    #tb.Wait()
+    tb.run()
+    tb.Wait()
+    #tb.Start(True)
+    #time.sleep(100.0)
+    #tb.lock()
+    #tb.stop()
 

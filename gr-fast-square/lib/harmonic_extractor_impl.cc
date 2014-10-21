@@ -106,6 +106,7 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data
 		freq_offs.push_back(2.0*M_PI*((d_prf_est-PRF)*((START_LO_FREQ-IF_FREQ+STEP_FREQ*ii)/PRF)-TUNE_OFFSET)/(SAMPLE_RATE/DECIM_FACTOR));
 
 	d_harmonic_phasors.clear();
+	d_harmonic_freqs.clear();
 	d_harmonic_freqs_abs.clear();
 	for(int ii=0; ii < NUM_STEPS; ii++){
 		float center_freq_harmonic_num = calculateCenterFreqHarmonicNum(ii);
