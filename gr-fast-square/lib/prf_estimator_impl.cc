@@ -31,6 +31,8 @@ prf_estimator_impl::prf_estimator_impl(int prf_fft_size, bool forward, const std
 	d_abs_array = new float[d_fft_size*NUM_STEPS];
 	prfSearch_init();
 
+	d_counter = 0;
+
 	std::stringstream str;
 	str << name() << unique_id();
 	d_me = pmt::string_to_symbol(str.str());
@@ -69,10 +71,10 @@ void prf_estimator_impl::prfSearch_init(){
 	cand_freqs.clear();
 
 	//Initialize freq array
-	float cur_cand_freq = 1.0*PRF*(1-PRF_ACCURACY);
-	while(cur_cand_freq <= 1.0*PRF*(1+PRF_ACCURACY)){
+	double cur_cand_freq = 1.0l*PRF*(1-PRF_ACCURACY);
+	while(cur_cand_freq <= 1.0l*PRF*(1+PRF_ACCURACY)){
 		cand_freqs.push_back(cur_cand_freq);
-		cur_cand_freq += 1.0*PRF*COARSE_PRECISION;
+		cur_cand_freq += 1.0l*PRF*COARSE_PRECISION;
 	}
 
 	//Initialize cand_peaks with appropriate indices based on each frequency
@@ -82,12 +84,14 @@ void prf_estimator_impl::prfSearch_init(){
 		for(int jj=0; jj < NUM_STEPS; jj++){
 			float center_freq_harmonic_num = calculateCenterFreqHarmonicNum(jj);
 			for(float harmonic_num = -NUM_HARMONICS_PER_STEP/4+.5; harmonic_num <= NUM_HARMONICS_PER_STEP/4-.5; harmonic_num++){
-				float cur_peak_idx = d_fft_size*(
+				double cur_peak_idx = 1.0l*d_fft_size*(
 						cand_freqs[ii]*harmonic_num+
 						(cand_freqs[ii]-PRF)*center_freq_harmonic_num-
 						TUNE_OFFSET
 					)/(SAMPLE_RATE/DECIM_FACTOR);
-				int cur_peak_idx_int = ((int)(round(cur_peak_idx)) % d_fft_size) + (jj*d_fft_size);
+				int cur_peak_idx_int = ((int)(round(cur_peak_idx)) % d_fft_size);
+				if(cur_peak_idx_int < 0) cur_peak_idx_int += d_fft_size;
+				cur_peak_idx_int += (jj*d_fft_size);
 				cur_peak_array.push_back(cur_peak_idx_int);
 			}
 		}
@@ -108,7 +112,7 @@ float prf_estimator_impl::calculateCenterFreqHarmonicNum(int step_num){
 	return ret;
 }
 
-float prf_estimator_impl::prfSearch_fast(float *data_fft_abs){
+double prf_estimator_impl::prfSearch_fast(float *data_fft_abs){
 
 	float max_prf_sum = 0.0;
 	int max_prf_sum_idx = 0;
@@ -131,7 +135,8 @@ int prf_estimator_impl::work(int noutput_items,
 
 
 	signed int input_data_size = FFT_SIZE*sizeof(gr_complex);
-	signed int output_data_size = output_signature()->sizeof_stream_item (0);
+	signed int input_data_size_padded = input_signature()->sizeof_stream_item(0)/sizeof(gr_complex);
+	signed int output_data_size = output_signature()->sizeof_stream_item(0);
 
 	int count = 0;
 	uint64_t abs_out_sample_cnt = nitems_written(0);
@@ -139,7 +144,7 @@ int prf_estimator_impl::work(int noutput_items,
 	//PRF estimation logic
 	while(count < noutput_items) {
 		for(int ii = 0; ii < NUM_STEPS; ii++){
-			gr_complex *in = ((gr_complex *) input_items[PRF_EST_ANCHOR]) + ii*FFT_SIZE;
+			gr_complex *in = ((gr_complex *) input_items[PRF_EST_ANCHOR]) + ii*FFT_SIZE + count*input_data_size_padded;
 			// copy input into optimally aligned buffer
 			if(d_window.size()) {
 				gr_complex *dst = d_fft->get_inbuf();
@@ -171,25 +176,35 @@ int prf_estimator_impl::work(int noutput_items,
 			// compute the fft
 			d_fft->execute();
 
+			//if(d_counter == 9){
+			//std::cout << "start" << std::endl;
+			//for(int jj=0; jj < d_fft_size; jj++)
+			//	std::cout << d_fft->get_inbuf()[jj].real() << " " << in[jj] << " " << d_fft->get_outbuf()[jj].real() << " " << d_fft->get_outbuf()[jj].imag() << std::endl;
+			//}
 			// turned out to be faster than aligned/unaligned switching
 			volk_32fc_magnitude_32f_u(&d_abs_array[ii*d_fft_size], d_fft->get_outbuf(), d_fft_size);
 
-			in  += FFT_SIZE;
 		}
+		////DEBUG
+		//std::cout << "abs start" << std::endl;
+		//for(int jj=0; jj < d_fft_size*NUM_STEPS; jj++){
+		//	std::cout << d_abs_array[jj] << std::endl;
+		//}
 
 		//Perform PRF estimation
-		float prf_est = prfSearch_fast(d_abs_array);
+		double prf_est = prfSearch_fast(d_abs_array);
 
-		//std::cout << "lowest freq = " << cand_freqs[0] << " highest freq = " << cand_freqs[cand_freqs.size()-1] << " prf_est = " << prf_est << std::endl;
+		std::cout << "lowest freq = " << cand_freqs[0] << " highest freq = " << cand_freqs[cand_freqs.size()-1] << " prf_est = " << prf_est << std::endl;
 	
 		//Attach tag to the data stream with the derived PRF estimate
 		add_item_tag(0, //stream ID
 			abs_out_sample_cnt + count, //sample
 			d_key,      //frame info
-			pmt::from_double((double)prf_est), //data (unused)
+			pmt::from_double(prf_est), //data (unused)
 			d_me        //block src id
 			);
 
+		d_counter++;
 		count++;
 	}
 

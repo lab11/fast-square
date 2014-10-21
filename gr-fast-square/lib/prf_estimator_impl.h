@@ -17,6 +17,7 @@ private:
 	fft::fft_complex *d_fft;
 	bool d_forward;
 	bool d_shift;
+	int d_counter;
 	std::vector<float> d_window;
 	void inSequenceMsg(pmt::pmt_t msg);
 	std::queue<std::vector<std::vector<gr_complex> > > d_message_queue;
@@ -24,11 +25,11 @@ private:
 
 	pmt::pmt_t d_key, d_me;
 
-	std::vector<float> cand_freqs;
+	std::vector<double> cand_freqs;
 	std::vector<std::vector<int> > cand_peaks;
 
 	void prfSearch_init();
-	float prfSearch_fast(float *data_fft_abs);
+	double prfSearch_fast(float *data_fft_abs);
 	float calculateCenterFreqHarmonicNum(int step_num);
 	
 protected:

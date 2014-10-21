@@ -5,6 +5,7 @@
 
 #include "stream_parser_impl.h"
 #include <gnuradio/io_signature.h>
+#include <volk/volk.h>
 #include <cstdio>
 #include <string>
 #include <fstream>
@@ -26,6 +27,10 @@ stream_parser_impl::stream_parser_impl()
 	d_output_per_seq = POW2_CEIL(NUM_STEPS*FFT_SIZE);
 
 	data_history.resize(4);
+
+	const int alignment_multiple =
+		volk_get_alignment() / sizeof(float);
+	set_alignment(std::max(1,alignment_multiple));
 }
 
 stream_parser_impl::~stream_parser_impl(){
@@ -94,9 +99,14 @@ int stream_parser_impl::general_work(int noutput_items,
 			for(int ii=0; ii < input_items.size(); ii++){
 				for(int jj=0; jj < NUM_STEPS; jj++){
 					int cur_data_idx = SKIP_SAMPLES + SAMPLES_PER_FREQ*jj;
+					gr_complex *optr = ((gr_complex *)(output_items[ii])) + jj*FFT_SIZE + output_offset;
 
 					//Have to use std::copy since deque isn't contiguous
-					std::copy(data_history[ii].begin() + cur_data_idx, data_history[ii].begin() + (cur_data_idx + FFT_SIZE), ((gr_complex *)(output_items[ii])) + jj*FFT_SIZE+output_offset);
+					std::copy(data_history[ii].begin() + cur_data_idx, data_history[ii].begin() + (cur_data_idx + FFT_SIZE), optr);
+					//If we're using image frequencies, make sure to take the complex conjugate...
+					if(USE_IMAGE)
+						volk_32fc_conjugate_32fc(optr, optr, FFT_SIZE);
+
 				}
 				data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ-1);
 			}

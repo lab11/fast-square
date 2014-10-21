@@ -7,8 +7,10 @@
 #define START_LO_FREQ 5.312e9
 #define IF_FREQ 990e6
 #define STEP_FREQ (-32e6)
-#define TUNE_OFFSET 42e3
+#define TUNE_OFFSET_RF 42e3
+
 #define USE_IMAGE true
+#define TUNE_OFFSET ((USE_IMAGE) ? -TUNE_OFFSET_RF : TUNE_OFFSET_RF)
 
 #define RECORD_TICKS 35000
 #define TOTAL_TICKS (RECORD_TICKS + 1 + 642 + 31)
