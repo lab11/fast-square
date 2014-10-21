@@ -79,7 +79,7 @@ int stream_parser_impl::general_work(int noutput_items,
 	
 				//In case a sequence number has been skipped, delete any stale data
 				if(sequence_num > d_hsn && ii > 0){
-					std::cout << "ii = " << ii << " input_items.size() = " << input_items.size() << " SAMPLES_PER_SEQ = " << SAMPLES_PER_SEQ << " sequence_num = " << sequence_num << " imag = " << data_history[ii][SAMPLES_PER_SEQ-1].imag() << " real = " << data_history[ii][SAMPLES_PER_SEQ-1].real() << std::endl;
+					//std::cout << "ii = " << ii << " input_items.size() = " << input_items.size() << " SAMPLES_PER_SEQ = " << SAMPLES_PER_SEQ << " sequence_num = " << sequence_num << " imag = " << data_history[ii][SAMPLES_PER_SEQ-1].imag() << " real = " << data_history[ii][SAMPLES_PER_SEQ-1].real() << std::endl;
 					d_hsn = sequence_num;
 					d_hsn_idx = ii;
 					ii = 0;

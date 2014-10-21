@@ -194,7 +194,7 @@ int prf_estimator_impl::work(int noutput_items,
 		//Perform PRF estimation
 		double prf_est = prfSearch_fast(d_abs_array);
 
-		std::cout << "lowest freq = " << cand_freqs[0] << " highest freq = " << cand_freqs[cand_freqs.size()-1] << " prf_est = " << prf_est << std::endl;
+		//std::cout << "lowest freq = " << cand_freqs[0] << " highest freq = " << cand_freqs[cand_freqs.size()-1] << " prf_est = " << prf_est << std::endl;
 	
 		//Attach tag to the data stream with the derived PRF estimate
 		add_item_tag(0, //stream ID

@@ -86,6 +86,16 @@ float harmonic_extractor_impl::calculateCenterFreqHarmonicNum(int step_num){
 	return ret;
 }
 
+void harmonic_extractor_impl::harmonicExtraction_bjt_reset(){
+	//Initialize frequency offset array
+	for(int ii=0; ii < NUM_STEPS; ii++)
+		d_freq_offs.push_back(2.0l*M_PI*((d_prf_est-PRF)*((START_LO_FREQ-IF_FREQ+STEP_FREQ*ii)/PRF)-TUNE_OFFSET)/(SAMPLE_RATE/DECIM_FACTOR));
+
+	d_harmonic_phasors.clear();
+	d_harmonic_freqs.clear();
+	d_harmonic_freqs_abs.clear();
+}
+
 void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data){
 	//%Subtract any frequency offset including tune offset and prf-induced offset at each snapshot
 	//if(use_image)
@@ -100,19 +110,11 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data
 	//
 	//harmonic_freqs = harmonic_nums_abs.*prf_est;
 
-	//Initialize frequency offset array
-	std::vector<float> freq_offs;
-	for(int ii=0; ii < NUM_STEPS; ii++)
-		freq_offs.push_back(2.0*M_PI*((d_prf_est-PRF)*((START_LO_FREQ-IF_FREQ+STEP_FREQ*ii)/PRF)-TUNE_OFFSET)/(SAMPLE_RATE/DECIM_FACTOR));
-
-	d_harmonic_phasors.clear();
-	d_harmonic_freqs.clear();
-	d_harmonic_freqs_abs.clear();
 	for(int ii=0; ii < NUM_STEPS; ii++){
 		float center_freq_harmonic_num = calculateCenterFreqHarmonicNum(ii);
 
 		//Apply frequency offset to all the raw data
-		d_nco.set_freq(freq_offs[ii]);
+		d_nco.set_freq(d_freq_offs[ii]);
 		d_nco.sincos(nco_array, FFT_SIZE, 1.0);
 		volk_32fc_x2_multiply_32fc(d_fft->get_inbuf(), nco_array, data, FFT_SIZE);
 		
@@ -135,6 +137,7 @@ int harmonic_extractor_impl::work(int noutput_items,
 		gr_vector_void_star &output_items){
 
 
+	signed int input_data_size_padded = input_signature()->sizeof_stream_item(0)/sizeof(gr_complex);
 	std::vector<tag_t> tags;
 	const gr_complex *in = (const gr_complex *) input_items[0];
 	gr_complex *out = (gr_complex *) output_items[0];
@@ -149,11 +152,18 @@ int harmonic_extractor_impl::work(int noutput_items,
 		get_tags_in_range(tags, 0, nread+count, nread+count+1);
 		for(unsigned ii=0; ii < tags.size(); ii++){
 			if(tags[ii].key == d_prf_key)
-				d_prf_est = (float)pmt::to_double(tags[ii].value);
+				d_prf_est = pmt::to_double(tags[ii].value);
 		}
 
 		//Run harmonic extraction logic
-		harmonicExtraction_bjt_fast((const gr_complex *) input_items[count]);
+		harmonicExtraction_bjt_reset();
+		for(int ii=0; ii < input_items.size(); ii++)
+			harmonicExtraction_bjt_fast(((const gr_complex *) input_items[ii]) + count*input_data_size_padded);
+		std::cout << "start" << std::endl;
+		for(int jj=0; jj < d_harmonic_phasors.size(); jj++){
+			std::cout << d_harmonic_phasors[jj].real() << " " << d_harmonic_phasors[jj].imag() << std::endl;
+		}
+
 
 		//Add new phasors and computed frequencies as tags to data stream
 		add_item_tag(0,

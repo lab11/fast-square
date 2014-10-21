@@ -15,18 +15,20 @@ class harmonic_extractor_impl : public harmonic_extractor
 private:
 	fft::fft_complex *d_fft;
 	int d_fft_size;
+	std::vector<float> d_freq_offs;
 	std::vector<int> d_sp_idxs;
 	std::vector<std::vector<int> > d_harmonic_nums_abs;
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<float> d_harmonic_freqs_abs;
 	std::vector<float> d_harmonic_freqs;
 	pmt::pmt_t d_prf_key, d_phasor_key, d_hfreq_key, d_hfreq_abs_key, d_me;
-	float d_prf_est;
+	double d_prf_est;
 
 	gr::fxpt_nco d_nco;
 	gr_complex *nco_array;
 
 	void harmonicExtraction_bjt_init();
+	void harmonicExtraction_bjt_reset();
 	void harmonicExtraction_bjt_fast(const gr_complex *data);
 	float calculateCenterFreqHarmonicNum(int step_num);
 
