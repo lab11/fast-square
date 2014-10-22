@@ -41,4 +41,6 @@
 
 #define POW2_CEIL(x) ((int)pow(2,ceil(log2(x))))
 
+typedef std::complex<double> gr_complex_d ;
+
 #endif

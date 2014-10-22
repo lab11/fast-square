@@ -86,7 +86,7 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_reset(){
 		float center_freq_harmonic_num = calculateCenterFreqHarmonicNum(ii);
 		for(int jj=0; jj < d_harmonic_nums.size(); jj++){
 			//d_harmonic_freqs_abs.push_back(d_prf_est*d_harmonic_nums_abs[ii][jj]);
-			float harmonic_freq = (d_prf_est*d_harmonic_nums[jj] + 
+			double harmonic_freq = ((double)d_prf_est*d_harmonic_nums[jj] + 
 					(d_prf_est-PRF)*center_freq_harmonic_num - 
 					TUNE_OFFSET);
 			d_harmonic_freqs.push_back(harmonic_freq);//(d_harmonic_nums_abs[ii][jj]-center_freq_harmonic_num)*d_prf_est);
@@ -160,12 +160,11 @@ int harmonic_extractor_impl::work(int noutput_items,
 		//gr_complex *data = ((gr_complex *)input_items[0]);
 		//for(int jj=0; jj < NUM_STEPS*FFT_SIZE; jj++)
 		//	std::cout << data[jj].real() << " " << data[jj].imag() << std::endl;
-		printf("%0.15f\n", d_prf_est);
-		std::cout << "start len = " << d_harmonic_freqs.size() << std::endl;
-		for(int jj=0; jj < d_harmonic_freqs.size(); jj++){
-			printf("%0.15f", d_harmonic_freqs[jj]);//std::cout << d_harmonic_freqs[jj] << std::endl;
-			std::cout << std::endl;
-		}
+		//printf("%0.15f\n", d_prf_est);
+		//std::cout << "start len = " << d_harmonic_freqs.size() << std::endl;
+		//for(int jj=0; jj < d_harmonic_phasors.size(); jj++){
+		//	std::cout << d_harmonic_phasors[jj].real() << " " << d_harmonic_phasors[jj].imag() << std::endl;//printf("%0.15f", d_harmonic_freqs[jj]);
+		//}
 		}
 
 
@@ -179,7 +178,7 @@ int harmonic_extractor_impl::work(int noutput_items,
 		add_item_tag(0,
 			abs_out_sample_cnt + count,
 			d_hfreq_key,
-			pmt::init_f32vector(d_harmonic_freqs.size(), &d_harmonic_freqs[0]),
+			pmt::init_f64vector(d_harmonic_freqs.size(), &d_harmonic_freqs[0]),
 			d_me
 		);
 

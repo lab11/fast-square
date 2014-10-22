@@ -10,17 +10,20 @@
 namespace gr {
 namespace fast_square {
 
+
 class harmonic_localizer_impl : public harmonic_localizer
 {
 private:
 	fft::fft_complex *d_fft;
 	pmt::pmt_t d_phasor_key, d_hfreq_key, d_prf_key;
 	std::vector<gr_complex> d_harmonic_phasors;
-	std::vector<float> d_harmonic_freqs;
+	std::vector<double> d_harmonic_freqs;
+	std::vector<float> d_harmonic_freqs_f;
 	std::vector<float> d_time_delay_in_samples;
 	std::vector<float> d_fft_window;
 	std::vector<gr_complex> d_actual_fft;
 	float d_prf_est;
+	int d_abs_count;
 	gr_complex d_i;
 	std::string d_gatd_id;
 

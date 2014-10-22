@@ -19,7 +19,7 @@ private:
 	std::vector<float> d_freq_offs;
 	std::vector<int> d_sp_idxs;
 	std::vector<gr_complex> d_harmonic_phasors;
-	std::vector<float> d_harmonic_freqs;
+	std::vector<double> d_harmonic_freqs;
 	std::vector<float> d_harmonic_nums;
 	pmt::pmt_t d_prf_key, d_phasor_key, d_hfreq_key, d_me;
 	double d_prf_est;
