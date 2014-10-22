@@ -18,11 +18,10 @@ private:
 	int d_abs_count;
 	std::vector<float> d_freq_offs;
 	std::vector<int> d_sp_idxs;
-	std::vector<std::vector<int> > d_harmonic_nums_abs;
 	std::vector<gr_complex> d_harmonic_phasors;
-	std::vector<float> d_harmonic_freqs_abs;
 	std::vector<float> d_harmonic_freqs;
-	pmt::pmt_t d_prf_key, d_phasor_key, d_hfreq_key, d_hfreq_abs_key, d_me;
+	std::vector<float> d_harmonic_nums;
+	pmt::pmt_t d_prf_key, d_phasor_key, d_hfreq_key, d_me;
 	double d_prf_est;
 
 	gr::fxpt_nco d_nco;
@@ -36,7 +35,7 @@ private:
 protected:
 
 public:
-	harmonic_extractor_impl(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name);
+	harmonic_extractor_impl(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_tag_name);
 	~harmonic_extractor_impl();
 
 	int work(int noutput_items,

@@ -13,12 +13,12 @@
 namespace gr {
 namespace fast_square {
 
-harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_id, int nthreads){
+harmonic_localizer::sptr harmonic_localizer::make(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_id, int nthreads){
 	return gnuradio::get_initial_sptr
-		(new harmonic_localizer_impl(phasor_tag_name, hfreq_abs_tag_name, hfreq_tag_name, prf_tag_name, gatd_id, nthreads));
+		(new harmonic_localizer_impl(phasor_tag_name, hfreq_tag_name, prf_tag_name, gatd_id, nthreads));
 }
 
-harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_id, int nthreads)
+harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_id, int nthreads)
 	: sync_block("harmonic_localizer",
 			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex)),
 			io_signature::make(0, 0, 0)),
@@ -26,7 +26,6 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 {
 	d_phasor_key = pmt::string_to_symbol(phasor_tag_name);
 	d_hfreq_key = pmt::string_to_symbol(hfreq_tag_name);
-	d_hfreq_abs_key = pmt::string_to_symbol(hfreq_abs_tag_name);
 	d_prf_key = pmt::string_to_symbol(prf_tag_name);
 	
 	d_i = gr_complex(0, 1);
@@ -484,8 +483,6 @@ int harmonic_localizer_impl::work(int noutput_items,
 				d_harmonic_phasors = pmt::c32vector_elements(tags[ii].value);
 			else if(tags[ii].key == d_hfreq_key)
 				d_harmonic_freqs = pmt::f32vector_elements(tags[ii].value);
-			else if(tags[ii].key == d_hfreq_abs_key)
-				d_harmonic_abs_freqs = pmt::f32vector_elements(tags[ii].value);
 			else if(tags[ii].key == d_prf_key)
 				d_prf_est = (float)pmt::to_double(tags[ii].value);
 		}

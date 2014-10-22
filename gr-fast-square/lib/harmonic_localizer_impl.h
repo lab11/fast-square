@@ -14,10 +14,9 @@ class harmonic_localizer_impl : public harmonic_localizer
 {
 private:
 	fft::fft_complex *d_fft;
-	pmt::pmt_t d_phasor_key, d_hfreq_key, d_hfreq_abs_key, d_prf_key;
+	pmt::pmt_t d_phasor_key, d_hfreq_key, d_prf_key;
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<float> d_harmonic_freqs;
-	std::vector<float> d_harmonic_abs_freqs;
 	std::vector<float> d_time_delay_in_samples;
 	std::vector<float> d_fft_window;
 	std::vector<gr_complex> d_actual_fft;
@@ -42,7 +41,7 @@ private:
 protected:
 
 public:
-	harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_abs_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_id, int nthreads);
+	harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_id, int nthreads);
 	~harmonic_localizer_impl();
 
 	int work(int noutput_items,
