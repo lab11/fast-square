@@ -15,6 +15,7 @@ class harmonic_extractor_impl : public harmonic_extractor
 private:
 	fft::fft_complex *d_fft;
 	int d_fft_size;
+	int d_abs_count;
 	std::vector<float> d_freq_offs;
 	std::vector<int> d_sp_idxs;
 	std::vector<std::vector<int> > d_harmonic_nums_abs;
