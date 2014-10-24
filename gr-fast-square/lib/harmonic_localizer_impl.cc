@@ -40,7 +40,8 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	//Pre-compute hamming window for later use in super-resolution generation of impulse response plots
 	genFFTWindow();
 
-	d_fft = new fft::fft_complex(NUM_HARM_PER_STEP_POST*NUM_STEPS*INTERP, true, nthreads);
+	d_fft = new fft::fft_complex(FFT_SIZE_POST*INTERP, true, nthreads);
+	memset(d_fft->get_inbuf(), 0, FFT_SIZE_POST*INTERP*sizeof(gr_complex));
 	
 	const int alignment_multiple =
 		volk_get_alignment() / sizeof(gr_complex);
@@ -134,9 +135,9 @@ std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<float> toas){
 
 void harmonic_localizer_impl::sendToGATD(std::vector<float> &positions){
 
-	std::cout << "positions" << std::endl;
-	for(int ii=0; ii < positions.size(); ii++)
-		std::cout << positions[ii] << std::endl;
+	//std::cout << "positions" << std::endl;
+	//for(int ii=0; ii < positions.size(); ii++)
+	//	std::cout << positions[ii] << std::endl;
 
 	//Construct outgoing packet
 	//TODO: These magic numbers are kind of ugly...
@@ -371,65 +372,66 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 		/*** Perform IFFT on zero-padded array to obtain super-resolution CIR ***/
 
 		//Start by copying the current phasors into the appropriate array
-		std::copy(hp_rearranged.begin() + anchor_idx, hp_rearranged.begin() + anchor_idx + FFT_SIZE_POST/2, fft_array.begin());
-		std::copy(hp_rearranged.begin() + anchor_idx + FFT_SIZE_POST/2, hp_rearranged.begin() + anchor_idx + FFT_SIZE_POST, fft_array.end() - FFT_SIZE_POST/2);
+		memcpy(d_fft->get_inbuf(), &hp_rearranged[anchor_idx], FFT_SIZE_POST/2*sizeof(gr_complex));
+		memcpy(d_fft->get_inbuf() + FFT_SIZE_POST*INTERP - FFT_SIZE_POST/2, &hp_rearranged[anchor_idx + FFT_SIZE_POST/2], FFT_SIZE_POST/2*sizeof(gr_complex));
 
 		//Then perform FFT
-		memcpy(d_fft->get_inbuf(), &fft_array[0], fft_array.size());
 		d_fft->execute();
 
 		//Get magnitude of CIR
 		std::vector<float> cir_mag(fft_array.size(), 0);
 		volk_32fc_magnitude_32f_u(&cir_mag[0], d_fft->get_outbuf(), fft_array.size());
 
-		if(d_abs_count == 9){
-			std::cout << "start" << std::endl;
-			for(int jj=0; jj < fft_array.size(); jj++){
-				std::cout << cir_mag[jj] << std::endl;
-			}
-		}
+		//if(d_abs_count == 9){
+		//	std::cout << "start" << std::endl;
+		//	for(int jj=0; jj < fft_array.size(); jj++){
+		//		std::cout << cir_mag[jj] << std::endl;
+		//	}
+		//}
 		
-		//Rearrange elements to get IFFT.  Record maximum peak
+		//NOTE: CIR is backwards because of the use of an FFT instead of IFFT
+		//Iteratively find maximum peak
 		float max_mag = 0.0;
 		int max_mag_idx = 0;
-		for(int jj=0; jj < FFT_SIZE_POST; jj++){
-			if(jj < FFT_SIZE_POST/2 && jj > 0){
-				float temp_mag = cir_mag[jj];
-				cir_mag[jj] = cir_mag[FFT_SIZE_POST-jj];
-				cir_mag[FFT_SIZE_POST-jj] = temp_mag;
-			}
+		for(int jj=0; jj < FFT_SIZE_POST*INTERP; jj++){
 			if(cir_mag[jj] > max_mag){
 				max_mag = cir_mag[jj];
 				max_mag_idx = jj;
 			}
 		}
 
-		//Lsat step: Determine ToA based on passed thresholds
+		//Last step: Determine ToA based on passed thresholds
 		int cur_idx = max_mag_idx;
 		int cand_toa_idx = max_mag_idx;
 		int below_threshold_count = 0;
-		for(int jj=0; jj < FFT_SIZE_POST; jj++){
-			cur_idx--;
-			if(cur_idx < 0) cur_idx = FFT_SIZE_POST-1;
-			if(cir_mag[cur_idx] < imp_thresholds[ii]){
+		for(int jj=0; jj < FFT_SIZE_POST*INTERP; jj++){
+			if(cir_mag[cur_idx]/max_mag < imp_thresholds[ii]){
 				below_threshold_count++;
 				if(below_threshold_count < FFT_SIZE_POST/4) break;
 			} else {
 				cand_toa_idx = cur_idx;
 				below_threshold_count = 0;
 			}
+			cur_idx++;
+			if(cur_idx >= FFT_SIZE_POST*INTERP) cur_idx = 0;
 		}
 		toas.push_back(cand_toa_idx);
 	}
+	if(d_abs_count == 9){
+		std::cout << "start" << std::endl;
+		for(int jj=0; jj < toas.size(); jj++){
+			std::cout << toas[jj] << std::endl;
+		}
+	}
 
 	//Rotate ToAs so that ToA of the first anchor ends up in the middle in order to avoid issues where ToAs span 
-	int rotate_amount = (FFT_SIZE_POST/2)-toas[0];
+	int rotate_amount = (FFT_SIZE_POST*INTERP/2)-toas[0];
 	for(int ii=0; ii < NUM_ANCHORS; ii++){
 		toas[ii] += rotate_amount;
 		if(toas[ii] < 0)
-			toas[ii] += FFT_SIZE_POST;
-		else if(toas[ii] >= FFT_SIZE_POST)
-			toas[ii] -= FFT_SIZE_POST;
+			toas[ii] += FFT_SIZE_POST*INTERP;
+		else if(toas[ii] >= FFT_SIZE_POST*INTERP)
+			toas[ii] -= FFT_SIZE_POST*INTERP;
 	}
 
 	return toas;
@@ -459,15 +461,24 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	//imp_toas = imp_toas/(2*prf_est*size(square_phasors_reshaped,2))/INTERP*3e8;
 
 	//Rearrange square phasors so they're in the expected shape/orientation for IFFT processing
-	std::vector<gr_complex> hp_rearranged;
+	std::vector<gr_complex> hp_rearranged(NUM_ANCHORS*FFT_SIZE_POST,gr_complex(0.0, 0.0));
 	for(int ii=0; ii < NUM_ANCHORS; ii++){
+		int hp_idx = 0;
 		for(int jj=0; jj < NUM_STEPS; jj++){
-			int cur_step = ((NUM_STEPS-jj-1)+NUM_STEPS/2) % NUM_STEPS;
 			for(int kk=HARMONIC_NON_OVERLAP_START; kk <= HARMONIC_NON_OVERLAP_END; kk++){
-				hp_rearranged.push_back(d_harmonic_phasors[ii*NUM_STEPS*NUM_HARMONICS_PER_STEP+(NUM_STEPS-jj-1)*NUM_HARMONICS_PER_STEP+kk]);
+				int phasor_idx = ii*NUM_STEPS*NUM_HARMONICS_PER_STEP+(NUM_STEPS-jj-1)*NUM_HARMONICS_PER_STEP+kk;
+				int res_idx = ii*FFT_SIZE_POST + ((hp_idx + FFT_SHIFT_POST) % FFT_SIZE_POST);
+				hp_rearranged[res_idx] = d_harmonic_phasors[phasor_idx];
+				hp_idx++;
 			}
 		}
 	}
+	//if(d_abs_count == 9){
+	//	std::cout << "start" << std::endl;
+	//	for(int ii=0; ii < hp_rearranged.size(); ii++){
+	//		std::cout << hp_rearranged[ii].real() << " " << hp_rearranged[ii].imag() << std::endl;
+	//	}
+	//}
 
 	//Calculate ToAs given phasors and expected phasors
 	float imp_thresholds[4] = {0.2, 0.2, 0.2, 0.2};
