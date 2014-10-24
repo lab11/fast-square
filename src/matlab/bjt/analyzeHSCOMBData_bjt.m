@@ -210,16 +210,17 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 		continue;
 	end
 	
+	load ../tx_phasors;
 	if(strcmp(res.prf_algorithm,'fast'))
 		if first_time
 			prfSearch_init;
 			harmonicExtraction_bjt_init;
-			load ../tx_phasors;
 		end
 		prfSearch_fast;
 	else
 		prfSearch;
 	end
+	keyboard;
 	if first_time
 		prf_est_history = repmat(prf_est,[NUM_HIST,1]);
 		first_time = false;
@@ -262,7 +263,7 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 		harmonicLocalization_r7;
 		imp_toas = imp_toas*2;
 		toc
-		%keyboard;
+		keyboard;
 		%save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
 	end
 

@@ -21,6 +21,7 @@ private:
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<double> d_harmonic_freqs;
 	std::vector<float> d_harmonic_nums;
+	std::vector<gr_complex*> d_harm_mix;
 	pmt::pmt_t d_prf_key, d_phasor_key, d_hfreq_key, d_me;
 	double d_prf_est;
 

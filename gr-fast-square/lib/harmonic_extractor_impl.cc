@@ -81,6 +81,19 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_reset(){
 	d_harmonic_phasors.clear();
 	d_harmonic_freqs.clear();
 
+	//recreate harmonic mixing arrays depending on prf estimate
+	for(int ii=0; ii < d_harm_mix.size(); ii++)
+		delete d_harm_mix[ii];
+
+	d_harm_mix.clear();
+	for(int ii=0; ii < d_harmonic_nums.size(); ii++){
+		gr_complex *new_harm_mix = new gr_complex[FFT_SIZE];
+		d_nco.set_freq(2.0l*M_PI*d_harmonic_nums[ii]*d_prf_est/(SAMPLE_RATE/DECIM_FACTOR));
+		d_nco.set_phase(0.0);
+		d_nco.sincos(new_harm_mix, FFT_SIZE, 1.0);
+		d_harm_mix.push_back(new_harm_mix);
+	}
+
 	//Prepare the harmonic frequency array from the received PRF estimate
 	for(int ii=0; ii < NUM_STEPS; ii++){
 		float center_freq_harmonic_num = calculateCenterFreqHarmonicNum(ii);
@@ -109,6 +122,8 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data
 	//
 	//harmonic_freqs = harmonic_nums_abs.*prf_est;
 
+	gr_complex data_step_pre[FFT_SIZE];
+	gr_complex data_step_post[FFT_SIZE];
 	for(int ii=0; ii < NUM_STEPS; ii++){
 		float center_freq_harmonic_num = calculateCenterFreqHarmonicNum(ii);
 
@@ -116,15 +131,26 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_fast(const gr_complex *data
 		d_nco.set_freq(d_freq_offs[ii]);
 		d_nco.set_phase(0.0);
 		d_nco.sincos(nco_array, FFT_SIZE, 1.0);
-		volk_32fc_x2_multiply_32fc(d_fft->get_inbuf(), nco_array, data+ii*FFT_SIZE, FFT_SIZE);
+		volk_32fc_x2_multiply_32fc(data_step_pre, nco_array, data+ii*FFT_SIZE, FFT_SIZE);
 
+		//Calculate phasors through brute-force approach since FFT bins aren't close enough to where they should be
+		for(int jj=0; jj < d_harmonic_nums.size(); jj++){
+			volk_32fc_x2_multiply_32fc(data_step_post, &d_harm_mix[jj], data_step_pre);
+
+			//Sum everything up to get resulting phasor
+			gr_complex cur_phasor(0.0, 0.0);
+			for(int kk=0; kk < FFT_SIZE; kk++){
+				cur_phasor += data_step_post[kk];
+			}
+			d_harmonic_phasors.push_back(cur_phasor);
+		}
 		
-		//Take FFT and extract corresponding harmonics
-		d_fft->execute();
+		////Take FFT and extract corresponding harmonics
+		//d_fft->execute();
 
-		//Extract harmonics based on indices computed previously
-		for(int jj=0; jj < d_sp_idxs.size(); jj++)
-			d_harmonic_phasors.push_back(d_fft->get_outbuf()[d_sp_idxs[jj]]);
+		////Extract harmonics based on indices computed previously
+		//for(int jj=0; jj < d_sp_idxs.size(); jj++)
+		//	d_harmonic_phasors.push_back(d_fft->get_outbuf()[d_sp_idxs[jj]]);
 	}
 }
 
