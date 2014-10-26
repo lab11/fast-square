@@ -31,6 +31,7 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	d_i = gr_complex(0, 1);
 
 	readActualFFT();
+	readToAErrors();
 
 	//Pre-calculated vector generated for compensateStepTime step
 	for(int ii=0; ii < NUM_ANCHORS * NUM_STEPS * NUM_HARMONICS_PER_STEP; ii++){
@@ -71,7 +72,32 @@ void harmonic_localizer_impl::readActualFFT(){
 	fclose(source);
 }
 
-std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<float> toas){
+void harmonic_localizer_impl::readToAErrors(){
+	//MATLAB code to generate measured_toa_errors.dat
+	//load temp.txt
+	//	measured_toa_errors = zeros(length(temp),4);
+	//for ii=1:length(temp)
+	//	measured_toas = (temp(ii,:)).'/(prf_est*size(square_phasors_reshaped,2))/INTERP*3e8;
+	//measured_toa_errors(ii,:) = calculateAnchorErrors(anchor_positions, res.toa_cal_location, measured_toas);
+	//end
+	//measured_toa_errors = median(measured_toa_errors,1)*(prf_est*size(square_phasors_reshaped,2))*INTERP/3e8;
+
+	//Open file for reading
+	FILE *source = fopen("measured_toa_errors.dat", "r");
+		
+	//Read complex numbers in one at a time
+	for(int ii=0; ii < NUM_ANCHORS*NUM_STEPS*NUM_HARM_PER_STEP_POST; ii++){
+		int cur_toa_error;
+		fread((void*)(&cur_toa_error), sizeof(cur_toa_error), 1, source);
+		d_toa_errors.push_back(cur_toa_error);
+	}
+	
+	//Close file
+	fclose(source);
+
+}
+
+std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<double> toas){
 
 	//double ti=67335898; double tk=86023981; double tj=78283279;  double tl=75092320;
 	//double xi=0;        double xk=0;        double xj=-15338349; double xl=-18785564;
@@ -94,8 +120,16 @@ std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<float> toas){
 	double ylk=ay[3]-ay[2]; double yik=ay[0]-ay[2]; double zji=az[1]-az[0]; double zki=az[2]-az[0];
 	double zik=az[0]-az[2]; double zjk=az[1]-az[2]; double zlk=az[3]-az[2];
 	
-	double rij=abs((100000*(toas[0]-toas[1]))/333564); double rik=abs((100000*(toas[0]-toas[2]))/333564);
-	double rkj=abs((100000*(toas[2]-toas[1]))/333564); double rkl=abs((100000*(toas[2]-toas[3]))/333564);
+	double rij=fabs((100000*(toas[0]-toas[1]))/333564); double rik=fabs((100000*(toas[0]-toas[2]))/333564);
+	double rkj=fabs((100000*(toas[2]-toas[1]))/333564); double rkl=fabs((100000*(toas[2]-toas[3]))/333564);
+
+	//if(d_abs_count == 9){
+	//	std::cout << xji << " " << xki << " " << xjk << " " << xlk << std::endl;
+	//	std::cout << xik << " " << yji << " " << yki << " " << yjk << std::endl;
+	//	std::cout << ylk << " " << yik << " " << zji << " " << zki << std::endl;
+	//	std::cout << zik << " " << zjk << " " << zlk << std::endl;
+	//	std::cout << rij << " " << rik << " " << rkj << " " << rkl << std::endl;
+	//}
 	
 	double s9 =rik*xji-rij*xki; double s10=rij*yki-rik*yji; double s11=rik*zji-rij*zki;
 	double s12=(rik*(rij*rij + ax[0]*ax[0] - ax[1]*ax[1] + ay[0]*ay[0] - ay[1]*ay[1] + az[0]*az[0] - az[1]*az[1])
@@ -407,7 +441,7 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 		for(int jj=0; jj < FFT_SIZE_POST*INTERP; jj++){
 			if(cir_mag[cur_idx]/max_mag < imp_thresholds[ii]){
 				below_threshold_count++;
-				if(below_threshold_count < FFT_SIZE_POST/4) break;
+				if(below_threshold_count > FFT_SIZE_POST*INTERP/4) break;
 			} else {
 				cand_toa_idx = cur_idx;
 				below_threshold_count = 0;
@@ -415,13 +449,13 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 			cur_idx++;
 			if(cur_idx >= FFT_SIZE_POST*INTERP) cur_idx = 0;
 		}
-		toas.push_back(cand_toa_idx);
-	}
-	if(d_abs_count == 9){
-		std::cout << "start" << std::endl;
-		for(int jj=0; jj < toas.size(); jj++){
-			std::cout << toas[jj] << std::endl;
-		}
+
+		//Must flip ToAs since not doing an FFT
+		int res_toa = FFT_SIZE_POST*INTERP-cand_toa_idx;
+		res_toa -= d_toa_errors[ii];
+		res_toa %= FFT_SIZE_POST*INTERP;
+		if(res_toa < 0) res_toa += FFT_SIZE_POST*INTERP;
+		toas.push_back(res_toa);
 	}
 
 	//Rotate ToAs so that ToA of the first anchor ends up in the middle in order to avoid issues where ToAs span 
@@ -433,6 +467,12 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 		else if(toas[ii] >= FFT_SIZE_POST*INTERP)
 			toas[ii] -= FFT_SIZE_POST*INTERP;
 	}
+	//if(d_abs_count == 9){
+	//	for(int jj=0; jj < toas.size(); jj++){
+	//		std::cout << toas[jj] << " ";
+	//	}
+	//	std::cout << std::endl;
+	//}
 
 	return toas;
 }
@@ -483,14 +523,18 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	//Calculate ToAs given phasors and expected phasors
 	float imp_thresholds[4] = {0.2, 0.2, 0.2, 0.2};
 	std::vector<int> imp_toas = extractToAs(hp_rearranged, imp_thresholds);
-	std::vector<float> imp_in_meters;
+	std::vector<double> imp_in_ns;
 	for(int ii=0; ii < imp_toas.size(); ii++){
-		float cur_toa = (float)imp_toas[ii]/(2.0*d_prf_est*FFT_SIZE_POST)/INTERP*3e8;
-		imp_in_meters.push_back(cur_toa);
+		double cur_toa = (double)imp_toas[ii]/(d_prf_est*FFT_SIZE_POST)/INTERP*1e9;
+		imp_in_ns.push_back(cur_toa);
 	}
 	
 	//Finally, determine position based on calculated ToAs...
-	std::vector<float> positions = tdoa4(imp_in_meters);
+	std::vector<float> positions = tdoa4(imp_in_ns);
+	for(int ii=0; ii < positions.size(); ii++){
+		std::cout << positions[ii] << " ";
+	}
+	std::cout << std::endl;
 	//sendToGATD(positions);
 }
 
@@ -532,6 +576,7 @@ int harmonic_localizer_impl::work(int noutput_items,
 		compensateRCHP();
 		compensateStepTime();
 		harmonicLocalization();
+		//std::cout << d_abs_count << std::endl;
 		//It is assumed that each dataset coming in has already populated d_harmonic_phasors and d_hfreq_key
 		//if(d_abs_count == 9){
 		//	std::cout << "start" << std::endl;

@@ -21,14 +21,16 @@ private:
 	std::vector<float> d_harmonic_freqs_f;
 	std::vector<float> d_time_delay_in_samples;
 	std::vector<float> d_fft_window;
+	std::vector<int> d_toa_errors;
 	std::vector<gr_complex> d_actual_fft;
 	float d_prf_est;
 	int d_abs_count;
 	gr_complex d_i;
 	std::string d_gatd_id;
 
+	void readToAErrors();
 	void readActualFFT();
-	std::vector<float> tdoa4(std::vector<float> toas);
+	std::vector<float> tdoa4(std::vector<double> toas);
 	void genFFTWindow();
 	gr_complex polyval(std::vector<float> &p, gr_complex x);
 	std::vector<gr_complex> freqz(std::vector<float> &b, std::vector<float> &a, std::vector<float> &w);
