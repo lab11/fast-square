@@ -50,6 +50,28 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 
 	//Message port for UDP to GATD
 	message_port_register_out(pmt::mp("frame_out"));
+
+	//Populate antenna array
+	float ax[4] = {2.405, 2.105, 4.108, 0.273};
+	float ay[4] = {3.815, 0.034, 0.347, 0.343};
+	float az[4] = {2.992, 2.494, 1.543, 1.560};
+	d_anchor_pos.clear();
+	std::vector<float> cur_anchor_pos(3);
+	for(int ii=0; ii < 4; ii++){
+		cur_anchor_pos[0] = ax[ii];
+		cur_anchor_pos[1] = ay[ii];
+		cur_anchor_pos[2] = az[ii];
+		d_anchor_pos.push_back(cur_anchor_pos);
+	}
+	float poss_steps[81] = {-0.0100, -0.0100, -0.0100, -0.0100, -0.0100, 0, -0.0100, -0.0100, 0.0100, -0.0100, 0, -0.0100, -0.0100, 0, 0, -0.0100, 0, 0.0100, -0.0100, 0.0100, -0.0100, -0.0100, 0.0100, 0, -0.0100, 0.0100, 0.0100, 0, -0.0100, -0.0100, 0, -0.0100, 0, 0, -0.0100, 0.0100, 0, 0, -0.0100, 0, 0, 0, 0, 0, 0.0100, 0, 0.0100, -0.0100, 0, 0.0100, 0, 0, 0.0100, 0.0100, 0.0100, -0.0100, -0.0100, 0.0100, -0.0100, 0, 0.0100, -0.0100, 0.0100, 0.0100, 0, -0.0100, 0.0100, 0, 0, 0.0100, 0, 0.0100, 0.0100, 0.0100, -0.0100, 0.0100, 0.0100, 0, 0.0100, 0.0100, 0.0100};
+	d_poss_steps.clear();
+	std::vector<float> cur_poss_steps(3);
+	for(int ii=0; ii < 27; ii++){
+		cur_poss_steps[0] = poss_steps[ii*3+0];
+		cur_poss_steps[1] = poss_steps[ii*3+1];
+		cur_poss_steps[2] = poss_steps[ii*3+2];
+		d_poss_steps.push_back(cur_poss_steps);
+	}
 }
 
 harmonic_localizer_impl::~harmonic_localizer_impl(){
@@ -97,6 +119,66 @@ void harmonic_localizer_impl::readToAErrors(){
 
 }
 
+std::vector<float> harmonic_localizer_impl::tdoa4_slow(std::vector<double> &toas){
+	for(int ii=toas.size()-1; ii >= 0; ii--)
+		toas[ii] -= toas[0];
+
+	bool new_est = true;
+	std::vector<float> est_position(3,0.0);
+	std::vector<float> cand_position(3, 0.0);
+	std::vector<float> cand_dist(toas.size(), 0.0);
+	float best_error = INFINITY;
+	while(new_est){
+		float cur_best_error = best_error;
+		int cur_best_error_idx = 0;
+		for(int jj=0; jj < d_poss_steps.size(); jj++){
+			for(int kk=0; kk < est_position.size(); kk++)
+				cand_position[kk] = est_position[kk] + d_poss_steps[jj][kk];
+			for(int ll=0; ll < d_anchor_pos.size(); ll++){
+				float anchor_dist = 0.0;
+				for(int kk=0; kk < est_position.size(); kk++){
+					float sub_dist = d_anchor_pos[ll][kk]-cand_position[kk];
+					anchor_dist += sub_dist*sub_dist;
+				}
+				if(ll > 0)
+					cand_dist[ll] = sqrt(anchor_dist) - cand_dist[0];
+				else
+					cand_dist[ll] = sqrt(anchor_dist);
+			}
+			float error = 0.0;
+			for(int kk=1; kk < d_anchor_pos.size(); kk++){
+				float cur_error = cand_dist[kk]-toas[kk];
+				error += cur_error*cur_error;
+			}
+			if(error < cur_best_error){
+				cur_best_error = error;
+				cur_best_error_idx = jj;
+			}
+		}
+
+		if(cur_best_error < best_error){
+			best_error = cur_best_error;
+			for(int kk=0; kk < est_position.size(); kk++)
+				est_position[kk] = est_position[kk] + d_poss_steps[cur_best_error_idx][kk];
+			new_est = true;
+		} else {
+			new_est = false;
+		}
+
+		//Check to make sure we don't go too far
+		float mag = 0.0;
+		for(int ii=0; ii < est_position.size(); ii++)
+			mag += est_position[ii]*est_position[ii];
+		if(mag > 100.0){
+			for(int ii=0; ii < est_position.size(); ii++)
+				est_position[ii] = 0.0;
+			break;
+		}
+	}
+
+	return est_position;
+}
+
 std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<double> toas){
 
 	//double ti=67335898; double tk=86023981; double tj=78283279;  double tl=75092320;
@@ -120,8 +202,8 @@ std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<double> toas){
 	double ylk=ay[3]-ay[2]; double yik=ay[0]-ay[2]; double zji=az[1]-az[0]; double zki=az[2]-az[0];
 	double zik=az[0]-az[2]; double zjk=az[1]-az[2]; double zlk=az[3]-az[2];
 	
-	double rij=fabs((100000*(toas[0]-toas[1]))/333564); double rik=fabs((100000*(toas[0]-toas[2]))/333564);
-	double rkj=fabs((100000*(toas[2]-toas[1]))/333564); double rkl=fabs((100000*(toas[2]-toas[3]))/333564);
+	double rij=fabs((100000.0l*(toas[0]-toas[1]))/333564); double rik=fabs((100000.0l*(toas[0]-toas[2]))/333564);
+	double rkj=fabs((100000.0l*(toas[2]-toas[1]))/333564); double rkl=fabs((100000.0l*(toas[2]-toas[3]))/333564);
 
 	//if(d_abs_count == 9){
 	//	std::cout << xji << " " << xki << " " << xjk << " " << xlk << std::endl;
@@ -149,12 +231,17 @@ std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<double> toas){
 	double o=4*rik*rik*((ax[0]-h)*(ax[0]-h)+(ay[0]-j)*(ay[0]-j)+az[0]*az[0])-k*k;
 	double s28=n/(2*m);     double s29=(o/m);       double s30=(s28*s28)-s29;
 	double root=sqrt(s30);
-	float z1=s28+root;
-	float z2=s28-root;
-	float x1=g*z1+h;
-	float x2=g*z2+h;
-	float y1=a*x1+b*z1+c;
-	float y2=a*x2+b*z2+c;
+
+	if(d_abs_count == 1374){
+		std::cout << xji << " " << xki << " " << xjk << " " << xlk << " " << xik << " " << yji << " " << yki << " " << yjk << " " << ylk << " " << yik << " " << zji << " " << zki << " " << zik << " " << zjk << " " << zlk << std::endl;
+		std::cout << a << " " << b << " " << c << " " << d << " " << e << " " << f << " " << g << " " << h << " " << i << " " << j << " " << k << " " << l << " " << m << " " << n << " " << o << " " << s28 << " " << s29 << " " << s30 << " " << root << " " << s9 << " " << s10 << " " << s11 << " " << s12 << " " << s13 << " " << s14 << " " << s15 << " " << s16 << " " << rij << " " << rik << " " << rkj << " " << rkl << " " << s30 << " " << root << std::endl;
+	}
+	double z1=s28+root;
+	double z2=s28-root;
+	double x1=g*z1+h;
+	double x2=g*z2+h;
+	double y1=a*x1+b*z1+c;
+	double y2=a*x2+b*z2+c;
 
 	std::vector<float> ret;
 	ret.push_back(x1);
@@ -416,7 +503,7 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 		std::vector<float> cir_mag(fft_array.size(), 0);
 		volk_32fc_magnitude_32f_u(&cir_mag[0], d_fft->get_outbuf(), fft_array.size());
 
-		//if(d_abs_count == 9){
+		//if(d_abs_count == 9 || d_abs_count == 800){
 		//	std::cout << "start" << std::endl;
 		//	for(int jj=0; jj < fft_array.size(); jj++){
 		//		std::cout << cir_mag[jj] << std::endl;
@@ -528,13 +615,35 @@ void harmonic_localizer_impl::harmonicLocalization(){
 		double cur_toa = (double)imp_toas[ii]/(d_prf_est*FFT_SIZE_POST)/INTERP*1e9;
 		imp_in_ns.push_back(cur_toa);
 	}
+	std::vector<double> imp_in_m;
+	for(int ii=0; ii < imp_toas.size(); ii++){
+		double cur_toa = (double)imp_toas[ii]/(d_prf_est*FFT_SIZE_POST)/INTERP*3e8;
+		imp_in_m.push_back(cur_toa);
+	}
+	//for(int ii=0; ii < imp_in_ns.size(); ii++){
+	//	std::cout << imp_in_ns[ii] << " ";
+	//}
+	//std::cout << std::endl;
 	
 	//Finally, determine position based on calculated ToAs...
-	std::vector<float> positions = tdoa4(imp_in_ns);
+	//std::vector<float> positions = tdoa4(imp_in_ns);
+	std::vector<float> positions = tdoa4_slow(imp_in_m);
+	//if(positions[3] > 2.5){
+	//	std::cout << d_abs_count << " ";
+	//	for(int ii=0; ii < positions.size(); ii++){
+	//		std::cout << positions[ii] << " ";
+	//	}
+	//	for(int ii=0; ii < imp_in_ns.size(); ii++){
+	//		std::cout << imp_in_ns[ii] << " ";
+	//	}
+	//	std::cout << std::endl;
+	//}
+	//if(d_abs_count == 1374){
 	for(int ii=0; ii < positions.size(); ii++){
 		std::cout << positions[ii] << " ";
 	}
 	std::cout << std::endl;
+	//}
 	//sendToGATD(positions);
 }
 
@@ -585,6 +694,12 @@ int harmonic_localizer_impl::work(int noutput_items,
 		//	}
 		//}
 
+		if(d_abs_count == 1)
+			d_start_time = clock();
+		else{
+			clock_t cur_time = clock();
+			std::cout << (double)(cur_time-d_start_time)/(d_abs_count-1)/CLOCKS_PER_SEC << std::endl;
+		}
 		d_abs_count++;
 		count++;
 	}   // while

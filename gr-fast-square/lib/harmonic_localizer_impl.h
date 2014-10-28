@@ -18,6 +18,8 @@ private:
 	pmt::pmt_t d_phasor_key, d_hfreq_key, d_prf_key;
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<double> d_harmonic_freqs;
+	std::vector<std::vector<float> > d_poss_steps;
+	std::vector<std::vector<float> > d_anchor_pos;
 	std::vector<float> d_harmonic_freqs_f;
 	std::vector<float> d_time_delay_in_samples;
 	std::vector<float> d_fft_window;
@@ -27,10 +29,12 @@ private:
 	int d_abs_count;
 	gr_complex d_i;
 	std::string d_gatd_id;
+	clock_t d_start_time;
 
 	void readToAErrors();
 	void readActualFFT();
 	std::vector<float> tdoa4(std::vector<double> toas);
+	std::vector<float> tdoa4_slow(std::vector<double> &toas);
 	void genFFTWindow();
 	gr_complex polyval(std::vector<float> &p, gr_complex x);
 	std::vector<gr_complex> freqz(std::vector<float> &b, std::vector<float> &a, std::vector<float> &w);
