@@ -23,7 +23,7 @@
 
 			var container;
 			var camera, scene, raycaster, renderer;
-			var estimates, estimateHistory, particles;
+			var estimates, estimateHistory, estimateCur, estimateValid, particles;
 			var controls;
 
 			var mouse = new THREE.Vector2(), INTERSECTED;
@@ -89,23 +89,25 @@
 				scene.add( object );
 
 				//Add in particles which will show the last N position estimates animated in time
-				estimateHistory = 100;
-				estimates = new THREE.Geometry();
-				var estimateMaterial = new THREE.PointCloudMaterial({ color: 0xFFFFFF, size: 1.0, map: THREE.ImageUtils.loadTexture("particle.png"), blending: THREE.AdditiveBlending, transparent: true });
+				estimateHistory = 60;
+				estimateCur = 0;
+				estimateValid = 0;
+				estimates = new THREE.Group();
+				var estimateMaterial = new THREE.SpriteMaterial({ color: 0xFFFFFF, map: THREE.ImageUtils.loadTexture("particle.png"), blending: THREE.AdditiveBlending, transparent: true });
 
 				for(var p = 0; p < estimateHistory; p++){
 					var px = Math.random() * 5 - 2.5;
 					var py = Math.random() * 5 - 2.5;
 					var pz = Math.random() * 5 - 2.5;
-					var estimate = new THREE.Vector3(px, py, pz);
+					var estimate = new THREE.Sprite(estimateMaterial.clone());
+					estimate.position.set(px, py, pz);
+					estimate.scale.set(0, 0, 1.0);
 
-					estimates.vertices.push(estimate);
+					estimates.add(estimate);
 				}
 
 				//Create the particle system
-				particles = new THREE.PointCloud(estimates, estimateMaterial);
-				particles.sortParticles = true;
-				scene.add(particles);
+				scene.add(estimates);
 
 				raycaster = new THREE.Raycaster();
 
@@ -131,25 +133,28 @@
 			}
 
 			function animate() {
+				var nx = Math.cos(estimateCur/estimateHistory*2*Math.PI) * 5 - 2.5;
+				var ny = 0;
+				var nz = Math.sin(estimateCur/estimateHistory*2*Math.PI) * 5 - 2.5;
 
-				var px = Math.random() * 5 - 2.5;
-				var py = Math.random() * 5 - 2.5;
-				var pz = Math.random() * 5 - 2.5;
-				estimates.vertices.unshift(new THREE.Vector3(px, py, pz));
-				while(estimates.vertices.length > estimateHistory)
-					estimates.vertices.pop();
+				//Increment new estimate index
+				estimateCur++;
+				estimateCur = estimateCur % estimateHistory;
+				if(estimateValid < estimateHistory) estimateValid++;
 
-				//for(var ii = 0; ii < estimates.vertices.length; ii++){
-				//	var estimate = estimates.vertices[ii];
-				//	estimate.x = estimate.x + Math.random() * 0.1 - 0.05;
-				//	estimate.y = estimate.y + Math.random() * 0.1 - 0.05;
-				//	estimate.z = estimate.z + Math.random() * 0.1 - 0.05;
-				//	
-				//}
+				//Update the sprite's position to reflect the new estimate
+				var sprite = estimates.children[estimateCur];
+				sprite.position.set(nx, ny, nz);
 
-				//Re-render the position estimates
-				particles.geometry.__dirtyVertices = true;
-
+				//Implement fade in size for previous estimates
+				for(var ii=0; ii < estimateHistory; ii++){
+					var ei = (estimateCur + 1 + ii) % estimateHistory;
+					var sprite = estimates.children[ei];
+					var scale = ii/estimateHistory;
+					if(estimateHistory-ii <= estimateValid)
+						sprite.scale.set(scale, scale, 1.0);
+				}
+				
 				requestAnimationFrame( animate );
 				controls.update();
 				render();
