@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+  		<title>Pulse Harmonia Demo</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background: black;
+				color: white;
+				margin: 0px;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+
+		<script src="../three.min.js"></script>
+		<script src="OrbitControls.js"></script>
+
+		<script>
+
+			var container;
+			var camera, scene, raycaster, renderer;
+			var estimates, estimateHistory, particles;
+			var controls;
+
+			var mouse = new THREE.Vector2(), INTERSECTED;
+			var radius = 100, theta = 0;
+
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				var info = document.createElement( 'div' );
+				info.style.position = 'absolute';
+				info.style.top = '10px';
+				info.style.width = '100%';
+				info.style.textAlign = 'center';
+				info.innerHTML = 'Pulse Harmonia Demonstration';
+				container.appendChild( info );
+
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.z = 50;
+
+				controls = new THREE.OrbitControls( camera );
+				controls.damping = 0.2;
+				controls.addEventListener( 'change', render );
+
+				scene = new THREE.Scene();
+
+				var light = new THREE.DirectionalLight( 0xffffff, 1 );
+				light.position.set( 1, 1, 1 ).normalize();
+				scene.add( light );
+
+				var geometry = new THREE.BoxGeometry( 40, 10, 20 );
+
+				var texture = THREE.ImageUtils.loadTexture( 'checkerboard.jpg' );
+				texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+				texture.repeat.set(4,2);
+
+				var texture2 = THREE.ImageUtils.loadTexture('wall.png');
+				texture2.wrapS = texture2.wrapT = THREE.RepeatWrapping;
+				texture2.repeat.set(2,1);
+
+				var texture3 = THREE.ImageUtils.loadTexture('wall.png');
+				texture3.wrapS = texture3.wrapT = THREE.RepeatWrapping;
+				texture3.repeat.set(4,2);
+
+				var texture4 = THREE.ImageUtils.loadTexture('wall.png');
+				texture4.wrapS = texture4.wrapT = THREE.RepeatWrapping;
+				texture4.repeat.set(4,1);
+
+				var face1 = new THREE.MeshBasicMaterial({map: texture, side: THREE.BackSide});
+				var face2 = new THREE.MeshBasicMaterial({map: texture2, side: THREE.BackSide});
+				var face3 = new THREE.MeshBasicMaterial({map: texture3, side: THREE.BackSide});
+				var face4 = new THREE.MeshBasicMaterial({map: texture4, side: THREE.BackSide});
+				var materials = [face2, face2, face3, face1, face4, face4];
+				var material = new THREE.MeshFaceMaterial(materials);
+
+				var object = new THREE.Mesh( geometry, material );//new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff , side: THREE.BackSide} ) );
+
+				scene.add( object );
+
+				//Add in particles which will show the last N position estimates animated in time
+				estimateHistory = 100;
+				estimates = new THREE.Geometry();
+				var estimateMaterial = new THREE.PointCloudMaterial({ color: 0xFFFFFF, size: 1.0, map: THREE.ImageUtils.loadTexture("particle.png"), blending: THREE.AdditiveBlending, transparent: true });
+
+				for(var p = 0; p < estimateHistory; p++){
+					var px = Math.random() * 5 - 2.5;
+					var py = Math.random() * 5 - 2.5;
+					var pz = Math.random() * 5 - 2.5;
+					var estimate = new THREE.Vector3(px, py, pz);
+
+					estimates.vertices.push(estimate);
+				}
+
+				//Create the particle system
+				particles = new THREE.PointCloud(estimates, estimateMaterial);
+				particles.sortParticles = true;
+				scene.add(particles);
+
+				raycaster = new THREE.Raycaster();
+
+				renderer = new THREE.WebGLRenderer( {antialias:true} );
+				renderer.setClearColor( 0x000000 );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.sortObjects = false;
+				container.appendChild(renderer.domElement);
+
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				render();
+			}
+
+			function animate() {
+
+				var px = Math.random() * 5 - 2.5;
+				var py = Math.random() * 5 - 2.5;
+				var pz = Math.random() * 5 - 2.5;
+				estimates.vertices.unshift(new THREE.Vector3(px, py, pz));
+				while(estimates.vertices.length > estimateHistory)
+					estimates.vertices.pop();
+
+				//for(var ii = 0; ii < estimates.vertices.length; ii++){
+				//	var estimate = estimates.vertices[ii];
+				//	estimate.x = estimate.x + Math.random() * 0.1 - 0.05;
+				//	estimate.y = estimate.y + Math.random() * 0.1 - 0.05;
+				//	estimate.z = estimate.z + Math.random() * 0.1 - 0.05;
+				//	
+				//}
+
+				//Re-render the position estimates
+				particles.geometry.__dirtyVertices = true;
+
+				requestAnimationFrame( animate );
+				controls.update();
+				render();
+			}
+
+			function render() {
+				renderer.render( scene, camera );
+			}
+
+		</script>
+
+	</body>
+</html>
