@@ -709,12 +709,12 @@ int harmonic_localizer_impl::work(int noutput_items,
 		//	}
 		//}
 
-		//if(d_abs_count == 1)
-		//	d_start_time = clock();
-		//else{
-		//	clock_t cur_time = clock();
-		//	std::cout << (double)(cur_time-d_start_time)/(d_abs_count-1)/CLOCKS_PER_SEC << std::endl;
-		//}
+		if(d_abs_count == 1)
+			d_start_time = clock();
+		else{
+			clock_t cur_time = clock();
+			std::cout << (double)(cur_time-d_start_time)/(d_abs_count-1)/CLOCKS_PER_SEC << std::endl;
+		}
 		d_abs_count++;
 		count++;
 	}   // while

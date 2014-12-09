@@ -26,6 +26,10 @@ stream_parser_impl::stream_parser_impl()
 {
 	d_output_per_seq = POW2_CEIL(NUM_STEPS*FFT_SIZE);
 
+	for(int ii=0; ii < 4; ii++)
+		d_restarted[ii] = false;
+	d_wait_for_restart = false;
+
 	data_history.resize(4);
 
 	const int alignment_multiple =
@@ -77,17 +81,45 @@ int stream_parser_impl::general_work(int noutput_items,
 			} else {
 				uint32_t sequence_num = getSequenceNum(data_history[ii][SAMPLES_PER_SEQ-1]);
 	
-				//In case a sequence number has been skipped, delete any stale data
-				if(sequence_num > d_hsn && ii > 0){
-					//std::cout << "ii = " << ii << " input_items.size() = " << input_items.size() << " SAMPLES_PER_SEQ = " << SAMPLES_PER_SEQ << " sequence_num = " << sequence_num << " imag = " << data_history[ii][SAMPLES_PER_SEQ-1].imag() << " real = " << data_history[ii][SAMPLES_PER_SEQ-1].real() << std::endl;
-					d_hsn = sequence_num;
-					d_hsn_idx = ii;
-					ii = 0;
-					continue;
-				} else if(sequence_num < d_hsn){
-					data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ-1);
-					ii = 0;
-					continue;
+				//TODO: Temporary code to allow for repeating log files
+				if(d_wait_for_restart){
+					if(sequence_num < (d_hsn - 100) && d_hsn > 100){
+						d_restarted[ii] = true;
+						bool all_restarted = true;
+						for(int jj=0; jj < 4; jj++)
+							all_restarted &= d_restarted[jj];
+						if(all_restarted){
+							std::cout << "ALL RESTARTED" << std::endl;
+							d_hsn = sequence_num;
+							d_wait_for_restart = false;
+							for(int jj=0; jj < 4; jj++)
+								d_restarted[jj] = false;
+							ii = 0;
+							continue;
+						}
+					} else {
+						data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ-1);
+						ii = 0;
+						continue;
+					}
+					
+				} else {
+					//In case a sequence number has been skipped, delete any stale data
+					if(sequence_num > d_hsn && ii > 0){
+						d_hsn = sequence_num;
+						d_hsn_idx = ii;
+						ii = 0;
+						continue;
+					} else if(sequence_num < d_hsn){
+						//TODO: Temporary code to allow for repeating log files
+						if(sequence_num < (d_hsn - 100) && d_hsn > 100){
+							d_restarted[ii] = true;
+							d_wait_for_restart = true;
+						}else
+							data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ-1);
+						ii = 0;
+						continue;
+					}
 				}
 			}
 			ii++;

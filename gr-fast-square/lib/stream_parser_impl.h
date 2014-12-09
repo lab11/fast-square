@@ -17,6 +17,8 @@ private:
 	int d_hsn_idx;
 	std::vector<std::deque<gr_complex> > data_history;
 	uint32_t getSequenceNum(gr_complex data);
+	bool d_restarted[4];
+	bool d_wait_for_restart;
 
 protected:
 
