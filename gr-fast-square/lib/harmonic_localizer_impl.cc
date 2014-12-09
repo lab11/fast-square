@@ -273,6 +273,17 @@ void harmonic_localizer_impl::sendToGATD(std::vector<float> &positions){
 	message_port_pub(pmt::mp("frame_out"), new_message);
 }
 
+void harmonic_localier_impl::sendRawSingle(std::vector<float> &position){
+	//Construct outgoing packet
+	uint8_t outgoing_packet[12];
+	memcpy(&outgoing_packet[0], &positions[0], 12);
+
+	//Push to GATD
+	pmt::pmt_t value = pmt::init_u8vector(12, outgoing_packet);
+	pmt::pmt_t new_message = pmt::cons(pmt::PMT_NIL, value);
+	message_port_pub(pmt::mp("frame_out"), new_message);
+}
+
 void harmonic_localizer_impl::genFFTWindow(){
 	//For now, the FFT window will be a Hamming window
 	float alpha = 0.54;
@@ -645,7 +656,7 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	}
 	std::cout << std::endl;
 	//}
-	sendToGATD(positions);
+	sendRawSingle(positions);
 }
 
 int harmonic_localizer_impl::work(int noutput_items,
