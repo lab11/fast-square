@@ -232,10 +232,10 @@ std::vector<float> harmonic_localizer_impl::tdoa4(std::vector<double> toas){
 	double s28=n/(2*m);     double s29=(o/m);       double s30=(s28*s28)-s29;
 	double root=sqrt(s30);
 
-	if(d_abs_count == 1374){
-		std::cout << xji << " " << xki << " " << xjk << " " << xlk << " " << xik << " " << yji << " " << yki << " " << yjk << " " << ylk << " " << yik << " " << zji << " " << zki << " " << zik << " " << zjk << " " << zlk << std::endl;
-		std::cout << a << " " << b << " " << c << " " << d << " " << e << " " << f << " " << g << " " << h << " " << i << " " << j << " " << k << " " << l << " " << m << " " << n << " " << o << " " << s28 << " " << s29 << " " << s30 << " " << root << " " << s9 << " " << s10 << " " << s11 << " " << s12 << " " << s13 << " " << s14 << " " << s15 << " " << s16 << " " << rij << " " << rik << " " << rkj << " " << rkl << " " << s30 << " " << root << std::endl;
-	}
+	//if(d_abs_count == 1374){
+	//	std::cout << xji << " " << xki << " " << xjk << " " << xlk << " " << xik << " " << yji << " " << yki << " " << yjk << " " << ylk << " " << yik << " " << zji << " " << zki << " " << zik << " " << zjk << " " << zlk << " ";
+	//	std::cout << a << " " << b << " " << c << " " << d << " " << e << " " << f << " " << g << " " << h << " " << i << " " << j << " " << k << " " << l << " " << m << " " << n << " " << o << " " << s28 << " " << s29 << " " << s30 << " " << root << " " << s9 << " " << s10 << " " << s11 << " " << s12 << " " << s13 << " " << s14 << " " << s15 << " " << s16 << " " << rij << " " << rik << " " << rkj << " " << rkl << " " << s30 << " " << root << " ";
+	//}
 	double z1=s28+root;
 	double z2=s28-root;
 	double x1=g*z1+h;
@@ -626,7 +626,7 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	//std::cout << std::endl;
 	
 	//Finally, determine position based on calculated ToAs...
-	//std::vector<float> positions = tdoa4(imp_in_ns);
+	//std::vector<float> positions_fast = tdoa4(imp_in_ns);
 	std::vector<float> positions = tdoa4_slow(imp_in_m);
 	//if(positions[3] > 2.5){
 	//	std::cout << d_abs_count << " ";
@@ -642,6 +642,9 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	for(int ii=0; ii < positions.size(); ii++){
 		std::cout << positions[ii] << " ";
 	}
+	//for(int ii=0; ii < positions_fast.size(); ii++){
+	//	std::cout << positions_fast[ii] << " ";
+	//}
 	std::cout << std::endl;
 	//}
 	//sendToGATD(positions);
@@ -694,12 +697,12 @@ int harmonic_localizer_impl::work(int noutput_items,
 		//	}
 		//}
 
-		if(d_abs_count == 1)
-			d_start_time = clock();
-		else{
-			clock_t cur_time = clock();
-			std::cout << (double)(cur_time-d_start_time)/(d_abs_count-1)/CLOCKS_PER_SEC << std::endl;
-		}
+		//if(d_abs_count == 1)
+		//	d_start_time = clock();
+		//else{
+		//	clock_t cur_time = clock();
+		//	std::cout << (double)(cur_time-d_start_time)/(d_abs_count-1)/CLOCKS_PER_SEC << std::endl;
+		//}
 		d_abs_count++;
 		count++;
 	}   // while

@@ -29,6 +29,7 @@ import wx
 import math
 import scopesink_cir
 import fast_square
+import sdrp
 
 class uhd_fft(gr.top_block):
 
@@ -184,6 +185,10 @@ class uhd_fft(gr.top_block):
 		#TODO: Put this back in once we want to push to gatd
 #		self.socket_pdu = blocks.socket_pdu("UDP_CLIENT", "inductor.eecs.umich.edu", "4001", 10000)
 #		self.msg_connect(self.h_locate, "frame_out", self.socket_pdu, "pdus")
+
+		##WebSocket output for connection to remote visualization interface
+		self.ws_port = sdrp.ws_sink_c(True, 18000, "FLOAT", "")
+		self.msg_connect(self.h_locate, "frame_out", self.ws_port, "ws_pdu_in")
 
 		#self.ns0 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
 		#self.ns1 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
