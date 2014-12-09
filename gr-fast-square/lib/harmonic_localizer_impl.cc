@@ -72,6 +72,7 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 		cur_poss_steps[2] = poss_steps[ii*3+2];
 		d_poss_steps.push_back(cur_poss_steps);
 	}
+
 }
 
 harmonic_localizer_impl::~harmonic_localizer_impl(){
@@ -644,7 +645,7 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	}
 	std::cout << std::endl;
 	//}
-	//sendToGATD(positions);
+	sendToGATD(positions);
 }
 
 int harmonic_localizer_impl::work(int noutput_items,
