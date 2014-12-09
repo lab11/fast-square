@@ -17,7 +17,9 @@ function wsLocation(host_addr, location_callback){
 	this.onMessage = onMessage;
 	function onMessage(evt){
 		var incoming_data = new Float32Array(evt.data);
-		self.historic_data = self.historic_data.concat(incoming_data);
+		for(var ii=0; ii < incoming_data.length; ii++){
+			self.historic_data.push(incoming_data[ii]);
+		}
 
 		//Push as many estimates out as is contained within the historic_data array
 		while(self.historic_data.length >= 3){
@@ -34,7 +36,6 @@ function wsLocation(host_addr, location_callback){
 
 	this.onOpen = onOpen;
 	function onOpen(){
-
 	}
 
 }

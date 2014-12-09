@@ -44,7 +44,7 @@
 				info.style.top = '10px';
 				info.style.width = '100%';
 				info.style.textAlign = 'center';
-				info.innerHTML = 'Pulse Harmonia Demonstration <br/> <br/> <input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:12600" size="35"/> <input type="submit" id="ws-submit" value="Connect" onclick="wsConnect()"/>';
+				info.innerHTML = 'Pulse Harmonia Demonstration <br/> <br/> <input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" id="ws-submit" value="Connect" onclick="wsConnect()"/>';
 				container.appendChild( info );
 
 				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
@@ -127,15 +127,15 @@
 			function wsConnect() {
 				//Add in websocket bindings
 				var host_addr = document.getElementById('flowgraph_host').value;
-				var host_addr_parts = host_addr.split(':');
-				var wslocation_host_addr = host_addr_parts[0] + ":" + wsaudio_portnum;
-				ws = new wsLocation(wslocation_host_addr, updateLocation);
+				ws = new wsLocation(host_addr, updateLocation);
+				ws.connect();
 			}
 
 			function updateLocation(estimate) {
-				var nx = estimate[0];
-				var ny = estimate[2];
-				var nz = estimate[3];
+				//(everything is in decimeters...)
+				var nx = estimate[0]*10;
+				var ny = estimate[2]*10;
+				var nz = estimate[1]*10;
 
 				//Increment new estimate index
 				estimateCur++;
