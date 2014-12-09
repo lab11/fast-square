@@ -72,6 +72,7 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 		cur_poss_steps[2] = poss_steps[ii*3+2];
 		d_poss_steps.push_back(cur_poss_steps);
 	}
+
 }
 
 harmonic_localizer_impl::~harmonic_localizer_impl(){
@@ -268,6 +269,17 @@ void harmonic_localizer_impl::sendToGATD(std::vector<float> &positions){
 
 	//Push to GATD
 	pmt::pmt_t value = pmt::init_u8vector(34, outgoing_packet);
+	pmt::pmt_t new_message = pmt::cons(pmt::PMT_NIL, value);
+	message_port_pub(pmt::mp("frame_out"), new_message);
+}
+
+void harmonic_localier_impl::sendRawSingle(std::vector<float> &position){
+	//Construct outgoing packet
+	uint8_t outgoing_packet[12];
+	memcpy(&outgoing_packet[0], &positions[0], 12);
+
+	//Push to GATD
+	pmt::pmt_t value = pmt::init_u8vector(12, outgoing_packet);
 	pmt::pmt_t new_message = pmt::cons(pmt::PMT_NIL, value);
 	message_port_pub(pmt::mp("frame_out"), new_message);
 }
@@ -647,7 +659,7 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	//}
 	std::cout << std::endl;
 	//}
-	//sendToGATD(positions);
+	sendRawSingle(positions);
 }
 
 int harmonic_localizer_impl::work(int noutput_items,

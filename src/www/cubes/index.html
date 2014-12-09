@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+  		<title>Pulse Harmonia Demo</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background: black;
+				color: white;
+				margin: 0px;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+
+		<script src="../three.min.js"></script>
+		<script src="OrbitControls.js"></script>
+		<script src="wsLocation.js"></script>
+
+		<script>
+
+			var container;
+			var camera, scene, raycaster, renderer;
+			var estimates, estimateHistory, estimateCur, estimateValid, particles;
+			var controls;
+
+			var mouse = new THREE.Vector2(), INTERSECTED;
+			var radius = 100, theta = 0;
+
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				var info = document.createElement( 'div' );
+				info.style.position = 'absolute';
+				info.style.top = '10px';
+				info.style.width = '100%';
+				info.style.textAlign = 'center';
+				info.innerHTML = 'Pulse Harmonia Demonstration <br/> <br/> <input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:12600" size="35"/> <input type="submit" id="ws-submit" value="Connect" onclick="wsConnect()"/>';
+				container.appendChild( info );
+
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.z = 50;
+
+				controls = new THREE.OrbitControls( camera );
+				controls.damping = 0.2;
+				controls.addEventListener( 'change', render );
+
+				scene = new THREE.Scene();
+
+				var light = new THREE.DirectionalLight( 0xffffff, 1 );
+				light.position.set( 1, 1, 1 ).normalize();
+				scene.add( light );
+
+				var geometry = new THREE.BoxGeometry( 40, 10, 20 );
+
+				var texture = THREE.ImageUtils.loadTexture( 'checkerboard.jpg' );
+				texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+				texture.repeat.set(4,2);
+
+				var texture2 = THREE.ImageUtils.loadTexture('wall.png');
+				texture2.wrapS = texture2.wrapT = THREE.RepeatWrapping;
+				texture2.repeat.set(2,1);
+
+				var texture3 = THREE.ImageUtils.loadTexture('wall.png');
+				texture3.wrapS = texture3.wrapT = THREE.RepeatWrapping;
+				texture3.repeat.set(4,2);
+
+				var texture4 = THREE.ImageUtils.loadTexture('wall.png');
+				texture4.wrapS = texture4.wrapT = THREE.RepeatWrapping;
+				texture4.repeat.set(4,1);
+
+				var face1 = new THREE.MeshBasicMaterial({map: texture, side: THREE.BackSide});
+				var face2 = new THREE.MeshBasicMaterial({map: texture2, side: THREE.BackSide});
+				var face3 = new THREE.MeshBasicMaterial({map: texture3, side: THREE.BackSide});
+				var face4 = new THREE.MeshBasicMaterial({map: texture4, side: THREE.BackSide});
+				var materials = [face2, face2, face3, face1, face4, face4];
+				var material = new THREE.MeshFaceMaterial(materials);
+
+				var object = new THREE.Mesh( geometry, material );//new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff , side: THREE.BackSide} ) );
+
+				scene.add( object );
+
+				//Add in particles which will show the last N position estimates animated in time
+				estimateHistory = 60;
+				estimateCur = 0;
+				estimateValid = 0;
+				estimates = new THREE.Group();
+				var estimateMaterial = new THREE.SpriteMaterial({ color: 0xFFFFFF, map: THREE.ImageUtils.loadTexture("particle.png"), blending: THREE.AdditiveBlending, transparent: true });
+
+				for(var p = 0; p < estimateHistory; p++){
+					var px = Math.random() * 5 - 2.5;
+					var py = Math.random() * 5 - 2.5;
+					var pz = Math.random() * 5 - 2.5;
+					var estimate = new THREE.Sprite(estimateMaterial.clone());
+					estimate.position.set(px, py, pz);
+					estimate.scale.set(0, 0, 1.0);
+
+					estimates.add(estimate);
+				}
+
+				//Create the particle system
+				scene.add(estimates);
+
+				raycaster = new THREE.Raycaster();
+
+				renderer = new THREE.WebGLRenderer( {antialias:true} );
+				renderer.setClearColor( 0x000000 );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.sortObjects = false;
+				container.appendChild(renderer.domElement);
+
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+
+			}
+
+			function wsConnect() {
+				//Add in websocket bindings
+				var host_addr = document.getElementById('flowgraph_host').value;
+				var host_addr_parts = host_addr.split(':');
+				var wslocation_host_addr = host_addr_parts[0] + ":" + wsaudio_portnum;
+				ws = new wsLocation(wslocation_host_addr, updateLocation);
+			}
+
+			function updateLocation(estimate) {
+				var nx = estimate[0];
+				var ny = estimate[2];
+				var nz = estimate[3];
+
+				//Increment new estimate index
+				estimateCur++;
+				estimateCur = estimateCur % estimateHistory;
+				if(estimateValid < estimateHistory) estimateValid++;
+
+				//Update the sprite's position to reflect the new estimate
+				var sprite = estimates.children[estimateCur];
+				sprite.position.set(nx, ny, nz);
+
+				//Implement fade in size for previous estimates
+				for(var ii=0; ii < estimateHistory; ii++){
+					var ei = (estimateCur + 1 + ii) % estimateHistory;
+					var sprite = estimates.children[ei];
+					var scale = ii/estimateHistory;
+					if(estimateHistory-ii <= estimateValid)
+						sprite.scale.set(scale, scale, 1.0);
+				}
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				render();
+			}
+
+			function animate() {
+			
+				requestAnimationFrame( animate );
+				controls.update();
+				render();
+			}
+
+			function render() {
+				renderer.render( scene, camera );
+			}
+
+		</script>
+
+	</body>
+</html>

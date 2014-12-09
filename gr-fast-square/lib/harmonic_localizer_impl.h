@@ -41,6 +41,7 @@ private:
 	std::vector<gr_complex> freqs(std::vector<float> &b, std::vector<float> &a, std::vector<float> &w);
 	std::vector<int> extractToAs(std::vector<gr_complex> hp_rearranged, float *imp_thresholds);
 	void sendToGATD(std::vector<float> &positions);
+	void sendRawSingle(std::vector<float> &position);
 	void correctCOMBPhase();
 	void compensateRCLP();
 	void compensateRCHP();
