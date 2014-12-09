@@ -28,8 +28,9 @@
 			var controls;
 
 			var mouse = new THREE.Vector2(), INTERSECTED;
-			var radius = 100, theta = 0;
-
+			var room_x = 4.5;
+			var room_y = 7.2;
+			var room_z = 3;
 
 			init();
 			animate();
@@ -48,7 +49,8 @@
 				container.appendChild( info );
 
 				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
-				camera.position.z = 50;
+				camera.position.z = 5;
+				camera.position.y = 6;
 
 				controls = new THREE.OrbitControls( camera );
 				controls.damping = 0.2;
@@ -60,7 +62,7 @@
 				light.position.set( 1, 1, 1 ).normalize();
 				scene.add( light );
 
-				var geometry = new THREE.BoxGeometry( 40, 10, 20 );
+				var geometry = new THREE.BoxGeometry( room_y, room_z, room_x);
 
 				var texture = THREE.ImageUtils.loadTexture( 'checkerboard.jpg' );
 				texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -133,9 +135,9 @@
 
 			function updateLocation(estimate) {
 				//(everything is in decimeters...)
-				var nx = estimate[0]*10;
-				var ny = estimate[2]*10;
-				var nz = estimate[1]*10;
+				var nx = estimate[1] - room_y/2;
+				var ny = estimate[2] - room_z/2;
+				var nz = -(estimate[0] - room_x/2);
 
 				//Increment new estimate index
 				estimateCur++;
@@ -152,7 +154,7 @@
 					var sprite = estimates.children[ei];
 					var scale = ii/estimateHistory;
 					if(estimateHistory-ii <= estimateValid)
-						sprite.scale.set(scale, scale, 1.0);
+						sprite.scale.set(scale/5, scale/5, 1.0);
 				}
 			}
 
