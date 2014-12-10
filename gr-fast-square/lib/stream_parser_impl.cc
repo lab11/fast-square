@@ -59,12 +59,14 @@ int stream_parser_impl::general_work(int noutput_items,
 		const gr_complex *in = (const gr_complex *) input_items[ii];
 
 		//Loop over all new data
-		for(int jj=0; jj < ninput_items[ii]; jj++){
-			data_history[ii].push_back(in[jj]);
+		if(data_history[ii].size() < SAMPLES_PER_SEQ * 100){
+			for(int jj=0; jj < ninput_items[ii]; jj++){
+				data_history[ii].push_back(in[jj]);
+			}
+	
+			//Consume items from each input
+			consume(ii, ninput_items[ii]);
 		}
-
-		//Consume items from each input
-		consume(ii, ninput_items[ii]);
 	}
 
 	//Pop elements off each deque until a subsequent restart is detected
