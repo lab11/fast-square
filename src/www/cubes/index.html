@@ -24,7 +24,6 @@
 
 			var container;
 			var camera, scene, raycaster, renderer;
-			var estimates, estimateHistory, estimateCur, estimateValid, particles;
 			var controls;
 
 			var mouse = new THREE.Vector2(), INTERSECTED;
@@ -45,7 +44,9 @@
 				info.style.top = '10px';
 				info.style.width = '100%';
 				info.style.textAlign = 'center';
-				info.innerHTML = 'Pulse Harmonia Demonstration <br/> <br/> <input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" id="ws-submit" value="Connect" onclick="wsConnect()"/>';
+				info.innerHTML = 'Pulse Harmonia Demonstration <br/> <br/>';
+				info.innerHTML += 'Stream 1: <input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" id="ws-submit" value="Connect" onclick="wsConnect(0xFFFFFF)"/> <br/> <br/>';
+				info.innerHTML += 'Stream 2: <input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" id="ws-submit" value="Connect" onclick="wsConnect(0xFF00FF)"/>';
 				container.appendChild( info );
 
 				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
@@ -91,27 +92,6 @@
 
 				scene.add( object );
 
-				//Add in particles which will show the last N position estimates animated in time
-				estimateHistory = 60;
-				estimateCur = 0;
-				estimateValid = 0;
-				estimates = new THREE.Group();
-				var estimateMaterial = new THREE.SpriteMaterial({ color: 0xFFFFFF, map: THREE.ImageUtils.loadTexture("particle.png"), blending: THREE.AdditiveBlending, transparent: true });
-
-				for(var p = 0; p < estimateHistory; p++){
-					var px = Math.random() * 5 - 2.5;
-					var py = Math.random() * 5 - 2.5;
-					var pz = Math.random() * 5 - 2.5;
-					var estimate = new THREE.Sprite(estimateMaterial.clone());
-					estimate.position.set(px, py, pz);
-					estimate.scale.set(0, 0, 1.0);
-
-					estimates.add(estimate);
-				}
-
-				//Create the particle system
-				scene.add(estimates);
-
 				raycaster = new THREE.Raycaster();
 
 				renderer = new THREE.WebGLRenderer( {antialias:true} );
@@ -126,36 +106,11 @@
 
 			}
 
-			function wsConnect() {
+			function wsConnect(color) {
 				//Add in websocket bindings
 				var host_addr = document.getElementById('flowgraph_host').value;
-				ws = new wsLocation(host_addr, updateLocation);
+				ws = new wsLocation(host_addr, scene, color);
 				ws.connect();
-			}
-
-			function updateLocation(estimate) {
-				//(everything is in decimeters...)
-				var nx = estimate[1] - room_y/2;
-				var ny = estimate[2] - room_z/2;
-				var nz = -(estimate[0] - room_x/2);
-
-				//Increment new estimate index
-				estimateCur++;
-				estimateCur = estimateCur % estimateHistory;
-				if(estimateValid < estimateHistory) estimateValid++;
-
-				//Update the sprite's position to reflect the new estimate
-				var sprite = estimates.children[estimateCur];
-				sprite.position.set(nx, ny, nz);
-
-				//Implement fade in size for previous estimates
-				for(var ii=0; ii < estimateHistory; ii++){
-					var ei = (estimateCur + 1 + ii) % estimateHistory;
-					var sprite = estimates.children[ei];
-					var scale = ii/estimateHistory;
-					if(estimateHistory-ii <= estimateValid)
-						sprite.scale.set(scale/5, scale/5, 1.0);
-				}
 			}
 
 			function onWindowResize() {
