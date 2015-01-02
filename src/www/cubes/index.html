@@ -7,18 +7,99 @@
 		<style>
 			body {
 				font-family: Monospace;
-				background: black;
 				color: white;
 				margin: 0px;
 				overflow: hidden;
+			}
+
+			.user-form {
+				padding: 10px;
+			}
+
+			.user-form .field {
+				padding: 4px;
+				margin: 1px;
+			}
+
+			.user-form .field label {
+				display: inline-block;
+				width: 120px;
+				margin-left: 5px;
+			}
+
+			.user-form .field input {
+				display: inline-block;
+			}
+
+			#info {
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: center;
+			}
+
+			.panel {
+				position: absolute;
+				background-color: black;
+			}
+
+			#view3d {
+				height: 80vh;
+				width: 60vw;
+				background: linear-gradient(#2D394D, #1A212C);
+			}
+
+			#vieworth1 {
+				height: 40vh;
+				width: 40vw;
+				top: 0vh;
+				left: 60vw;
+				background-color: blue;
+			}
+
+			#vieworth2 {
+				height: 40vh;
+				width: 40vw;
+				top: 40vh;
+				left: 60vw;
+				background-color: yellow;
+			}
+
+			#viewtime {
+				height: 20vh;
+				width: 60vw;
+				top: 80vh;
+				left: 0vw;
+				background-color: black;
 			}
 		</style>
 	</head>
 	<body>
 
+
+		<script src="http://d3js.org/d3.v3.min.js"></script>
+
+		<!--<script src="timeplot.js"></script>-->
+
 		<script src="../three.min.js"></script>
+		<script src="../VRMLLoader.js"></script>
+		<script src="../PLYLoader.js"></script>
 		<script src="OrbitControls.js"></script>
 		<script src="wsLocation.js"></script>
+
+		<div id="view3d" class="panel">
+			<div id="info">
+					Pulse Harmonia Demonstration
+					<form class="user-form">
+					<div class="field"><label>Stream 1: </label><input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host\',0xFFFFFF)"/> </div>
+					<div class="field"><label>Stream 2: </label><input type="text" id="flowgraph_host2" value="capacitor.eecs.umich.edu:18001" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host2\',0xFF00FF)"/> </div>
+					</form>
+			</div>
+		</div>
+		<div id="vieworth1" class="panel"></div>
+		<div id="vieworth2" class="panel"></div>
+		<div id="viewtime" class="panel"></div>
+		<div id="" class="panel"></div>
 
 		<script>
 
@@ -36,32 +117,23 @@
 
 			function init() {
 
-				container = document.createElement( 'div' );
-				document.body.appendChild( container );
+				container = document.getElementById('view3d');
 
-				var info = document.createElement( 'div' );
-				info.style.position = 'absolute';
-				info.style.top = '10px';
-				info.style.width = '100%';
-				info.style.textAlign = 'center';
-				info.innerHTML = 'Pulse Harmonia Demonstration <br/> <br/>';
-				info.innerHTML += 'Stream 1: <input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" id="ws-submit" value="Connect" onclick="wsConnect(0xFFFFFF)"/> <br/> <br/>';
-				info.innerHTML += 'Stream 2: <input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" id="ws-submit" value="Connect" onclick="wsConnect(0xFF00FF)"/>';
-				container.appendChild( info );
-
-				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera = new THREE.PerspectiveCamera( 70, container.offsetWidth / container.offsetHeight, 1, 10000 );
 				camera.position.z = 4;
 				camera.position.y = 5;
 
-				controls = new THREE.OrbitControls( camera );
-				controls.damping = 0.2;
-				controls.addEventListener( 'change', render );
-
 				scene = new THREE.Scene();
 
-				var light = new THREE.DirectionalLight( 0xffffff, 1 );
-				light.position.set( 1, 1, 1 ).normalize();
-				scene.add( light );
+				var loader = new THREE.PLYLoader();
+				loader.addEventListener( 'load', function ( event ) {
+
+					scene.add(event.content);
+				} );
+				loader.load( "blah.ply" );
+
+				var dirLight = new THREE.DirectionalLight( 0xffffff );
+				dirLight.position.set( 200, 200, 1000 ).normalize();
 
 				var geometry = new THREE.BoxGeometry( room_y, room_z, room_x);
 
@@ -94,31 +166,34 @@
 
 				raycaster = new THREE.Raycaster();
 
-				renderer = new THREE.WebGLRenderer( {antialias:true} );
-				renderer.setClearColor( 0x000000 );
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer = new THREE.WebGLRenderer( {antialias:true, alpha: true} );
+				renderer.setClearColor( 0x000000, 0);
+				renderer.setSize( container.offsetWidth, container.offsetHeight );
 				renderer.sortObjects = false;
 				container.appendChild(renderer.domElement);
 
+				controls = new THREE.OrbitControls( camera, renderer.domElement);
+				controls.damping = 0.2;
+				controls.addEventListener( 'change', render );
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
 
 			}
 
-			function wsConnect(color) {
+			function wsConnect(evt_source, color) {
 				//Add in websocket bindings
-				var host_addr = document.getElementById('flowgraph_host').value;
+				var host_addr = document.getElementById(evt_source).value;
 				ws = new wsLocation(host_addr, scene, color);
 				ws.connect();
 			}
 
 			function onWindowResize() {
 
-				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.aspect = container.offsetWidth / container.offsetHeight;
 				camera.updateProjectionMatrix();
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setSize( container.offsetWidth, container.offsetHeight );
 
 				render();
 			}

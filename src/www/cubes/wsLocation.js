@@ -3,7 +3,7 @@ function wsLocation(host_addr, scene_context, color){
 	this.host_addr = host_addr;
 	this.historic_data = [];
 	this.scene_context = scene_context;
-	this.offset = Math.random();
+	this.offset = 0;//Math.random();
 
 	//Add in particles which will show the last N position estimates animated in time
 	this.estimateHistory = 60;
