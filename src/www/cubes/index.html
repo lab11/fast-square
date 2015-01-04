@@ -10,6 +10,7 @@
 				color: white;
 				margin: 0px;
 				overflow: hidden;
+				background: linear-gradient(#2D394D, #1A212C);
 			}
 
 			.user-form {
@@ -31,7 +32,7 @@
 				display: inline-block;
 			}
 
-			#info {
+			.info {
 				position: absolute;
 				top: 10px;
 				width: 100%;
@@ -40,13 +41,16 @@
 
 			.panel {
 				position: absolute;
-				background-color: black;
+			}
+
+			#glcontainer {
+				height: 80vh;
+				width: 100vw;
 			}
 
 			#view3d {
 				height: 80vh;
 				width: 60vw;
-				background: linear-gradient(#2D394D, #1A212C);
 			}
 
 			#vieworth1 {
@@ -54,7 +58,6 @@
 				width: 40vw;
 				top: 0vh;
 				left: 60vw;
-				background-color: blue;
 			}
 
 			#vieworth2 {
@@ -62,7 +65,6 @@
 				width: 40vw;
 				top: 40vh;
 				left: 60vw;
-				background-color: yellow;
 			}
 
 			#viewtime {
@@ -74,7 +76,7 @@
 			}
 		</style>
 	</head>
-	<body>
+	<body onload="init()">
 
 
 		<script src="http://d3js.org/d3.v3.min.js"></script>
@@ -83,28 +85,37 @@
 
 		<script src="../three.min.js"></script>
 		<script src="../VRMLLoader.js"></script>
-		<script src="../PLYLoader.js"></script>
 		<script src="OrbitControls.js"></script>
 		<script src="wsLocation.js"></script>
 
-		<div id="view3d" class="panel">
-			<div id="info">
-					Pulse Harmonia Demonstration
-					<form class="user-form">
-					<div class="field"><label>Stream 1: </label><input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host\',0xFFFFFF)"/> </div>
-					<div class="field"><label>Stream 2: </label><input type="text" id="flowgraph_host2" value="capacitor.eecs.umich.edu:18001" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host2\',0xFF00FF)"/> </div>
-					</form>
+		<div id="glcontainer">
+			<div id="view3d" class="panel">
+				<div class="info">
+						Pulse Harmonia Demonstration
+						<form class="user-form">
+						<div class="field"><label>Stream 1: </label><input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host\',0xFFFFFF)"/> </div>
+						<div class="field"><label>Stream 2: </label><input type="text" id="flowgraph_host2" value="capacitor.eecs.umich.edu:18001" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host2\',0xFF00FF)"/> </div>
+						</form>
+				</div>
+			</div>
+			<div id="vieworth1" class="panel">
+				<div class="info">
+					Orthographic Top View
+				</div>
+			</div>
+			<div id="vieworth2" class="panel">
+				<div class="info">
+					Orthographic Side View
+				</div>
 			</div>
 		</div>
-		<div id="vieworth1" class="panel"></div>
-		<div id="vieworth2" class="panel"></div>
 		<div id="viewtime" class="panel"></div>
 		<div id="" class="panel"></div>
 
 		<script>
 
-			var container;
-			var camera, scene, raycaster, renderer;
+			var parent_container;
+			var scene, raycaster, renderer;
 			var controls;
 
 			var mouse = new THREE.Vector2(), INTERSECTED;
@@ -112,52 +123,72 @@
 			var room_y = 7.2;
 			var room_z = 3;
 
-			init();
-			animate();
+			var views = [
+				{
+					camera_type: THREE.PerspectiveCamera,
+					container: document.getElementById('view3d'),
+					eye: [4, 0, 5],
+					up: [0, 0, 1],
+					fov: 70
+				},
+				{
+					camera_type: THREE.OrthographicCamera,
+					container: document.getElementById('vieworth1'),
+					eye: [0, 0, 3],
+					up: [0, 0, 1],
+					frustum_width: room_y,
+					frustum_height: room_x
+				},
+				{
+					camera_type: THREE.OrthographicCamera,
+					container: document.getElementById('vieworth2'),
+					eye: [4, 0, 0],
+					up: [0, 0, 1],
+					frustum_width: room_y,
+					frustum_height: room_z
+				}
+			];
 
 			function init() {
+				parent_container = document.getElementById("glcontainer");
 
-				container = document.getElementById('view3d');
-
-				camera = new THREE.PerspectiveCamera( 70, container.offsetWidth / container.offsetHeight, 1, 10000 );
-				camera.position.z = 4;
-				camera.position.y = 5;
+				for(var ii=0; ii < views.length; ii++){
+					if(views[ii].camera_type == THREE.OrthographicCamera)
+						views[ii].camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 10000 );
+					else
+						views[ii].camera = new THREE.PerspectiveCamera( views[ii].fov, 0, 1, 10000 );
+					resizeCamera(ii);
+					views[ii].camera.lookAt(new THREE.Vector3(0, 0, 0));
+				}
 
 				scene = new THREE.Scene();
-
-				var loader = new THREE.PLYLoader();
-				loader.addEventListener( 'load', function ( event ) {
-
-					scene.add(event.content);
-				} );
-				loader.load( "blah.ply" );
 
 				var dirLight = new THREE.DirectionalLight( 0xffffff );
 				dirLight.position.set( 200, 200, 1000 ).normalize();
 
-				var geometry = new THREE.BoxGeometry( room_y, room_z, room_x);
+				var geometry = new THREE.BoxGeometry( room_x, room_y, room_z);
 
 				var texture = THREE.ImageUtils.loadTexture( 'checkerboard.jpg' );
 				texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-				texture.repeat.set(4,2);
+				texture.repeat.set(2,4);
 
 				var texture2 = THREE.ImageUtils.loadTexture('wall.png');
 				texture2.wrapS = texture2.wrapT = THREE.RepeatWrapping;
-				texture2.repeat.set(2,1);
+				texture2.repeat.set(1,2);
 
 				var texture3 = THREE.ImageUtils.loadTexture('wall.png');
 				texture3.wrapS = texture3.wrapT = THREE.RepeatWrapping;
-				texture3.repeat.set(4,2);
+				texture3.repeat.set(2,4);
 
 				var texture4 = THREE.ImageUtils.loadTexture('wall.png');
 				texture4.wrapS = texture4.wrapT = THREE.RepeatWrapping;
-				texture4.repeat.set(4,1);
+				texture4.repeat.set(1,4);
 
 				var face1 = new THREE.MeshBasicMaterial({map: texture, side: THREE.BackSide});
 				var face2 = new THREE.MeshBasicMaterial({map: texture2, side: THREE.BackSide});
 				var face3 = new THREE.MeshBasicMaterial({map: texture3, side: THREE.BackSide});
 				var face4 = new THREE.MeshBasicMaterial({map: texture4, side: THREE.BackSide});
-				var materials = [face2, face2, face3, face1, face4, face4];
+				var materials = [ face4, face4, face2, face2, face3, face1];
 				var material = new THREE.MeshFaceMaterial(materials);
 
 				var object = new THREE.Mesh( geometry, material );//new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff , side: THREE.BackSide} ) );
@@ -168,16 +199,17 @@
 
 				renderer = new THREE.WebGLRenderer( {antialias:true, alpha: true} );
 				renderer.setClearColor( 0x000000, 0);
-				renderer.setSize( container.offsetWidth, container.offsetHeight );
+				renderer.setSize( parent_container.offsetWidth, parent_container.offsetHeight );
 				renderer.sortObjects = false;
-				container.appendChild(renderer.domElement);
+				parent_container.appendChild(renderer.domElement);
 
-				controls = new THREE.OrbitControls( camera, renderer.domElement);
+				controls = new THREE.OrbitControls( views[0].camera, document.getElementById('view3d'));//renderer.domElement);
 				controls.damping = 0.2;
 				controls.addEventListener( 'change', render );
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
+				animate();
 
 			}
 
@@ -188,12 +220,53 @@
 				ws.connect();
 			}
 
+			function resizeCamera(view_idx){
+				var view = views[view_idx];
+				var view_height = view.container.offsetHeight;
+				var view_width = view.container.offsetWidth;
+				
+				if(view.camera_type == THREE.OrthographicCamera){
+					var frustum_width = view.frustum_width;
+					var frustum_height = view.frustum_height;
+					if(view_width/frustum_width < view_height/frustum_height){
+						var scale = view_height/frustum_height*frustum_width/view_width;
+						view.camera.left = -frustum_width/2;
+						view.camera.right = frustum_width/2;
+						view.camera.top = frustum_height*scale/2;
+						view.camera.bottom = -frustum_height*scale/2;
+					} else {
+						var scale = view_width/frustum_width*frustum_height/view_height;
+						view.camera.left = -frustum_width*scale/2;
+						view.camera.right = frustum_width*scale/2;
+						view.camera.top = frustum_height/2;
+						view.camera.bottom = -frustum_height/2;
+					}
+					view.camera.rotation.z = Math.PI/2;
+				} else
+					view.camera.aspect = view.container.offsetWidth / view.container.offsetHeight;
+				view.camera.position.x = view.eye[0];
+				view.camera.position.y = view.eye[1];
+				view.camera.position.z = view.eye[2];
+				view.camera.up.x = view.up[0];
+				view.camera.up.y = view.up[1];
+				view.camera.up.z = view.up[2];
+
+			
+				view.left = view.container.offsetLeft;
+				view.bottom = (parent_container.offsetTop+parent_container.offsetHeight)-(view.container.offsetTop+view.container.offsetHeight);
+				view.width = view.container.offsetWidth;
+				view.height = view.container.offsetHeight;
+
+				view.camera.updateProjectionMatrix();
+			}
+
 			function onWindowResize() {
 
-				camera.aspect = container.offsetWidth / container.offsetHeight;
-				camera.updateProjectionMatrix();
+				for(var ii=0; ii < views.length; ii++){
+					resizeCamera(ii);
+				}
 
-				renderer.setSize( container.offsetWidth, container.offsetHeight );
+				renderer.setSize( parent_container.offsetWidth, parent_container.offsetHeight );
 
 				render();
 			}
@@ -206,7 +279,16 @@
 			}
 
 			function render() {
-				renderer.render( scene, camera );
+				for(var ii=0; ii < views.length; ii++){
+					var view = views[ii];
+					var camera = view.camera;
+
+					renderer.setViewport( view.left, view.bottom, view.width, view.height );
+					renderer.setScissor( view.left, view.bottom, view.width, view.height );
+					renderer.enableScissorTest ( true );
+
+					renderer.render( scene, camera );
+				}
 			}
 
 		</script>

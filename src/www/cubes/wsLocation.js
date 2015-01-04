@@ -55,9 +55,9 @@ function wsLocation(host_addr, scene_context, color){
 	this.updateLocation = updateLocation;
 	function updateLocation(estimate) {
 		//(everything is in decimeters...)
-		var nx = estimate[1] - room_y/2;
-		var ny = estimate[2] - room_z/2 + self.offset;
-		var nz = -(estimate[0] - room_x/2);
+		var nx = estimate[0] - room_x/2;
+		var ny = estimate[1] - room_y/2 + self.offset;
+		var nz = -(estimate[2] - room_z/2);
 
 		//Increment new estimate index
 		self.estimateCur++;
