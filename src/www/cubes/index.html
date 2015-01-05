@@ -7,6 +7,8 @@
 		<style>
 			body {
 				font-family: Monospace;
+				font-weight: bold;
+				text-shadow: 0px 0px 2px #000000;
 				color: white;
 				margin: 0px;
 				overflow: hidden;
@@ -32,15 +34,25 @@
 				display: inline-block;
 			}
 
-			.info {
+			.panel {
 				position: absolute;
-				top: 10px;
+			}
+
+			.panel-header {
+				position: absolute;
+				background-color: black;
+				top: 0px;
+				height: 20px;
 				width: 100%;
+				padding: 10px;
 				text-align: center;
 			}
 
-			.panel {
+			.panel-content {
 				position: absolute;
+				top: 40px;
+				bottom: 0px;
+				width: 100%;
 			}
 
 			#glcontainer {
@@ -48,31 +60,11 @@
 				width: 100vw;
 			}
 
-			#view3d {
-				height: 80vh;
-				width: 60vw;
-			}
-
-			#vieworth1 {
-				height: 40vh;
-				width: 40vw;
-				top: 0vh;
-				left: 60vw;
-			}
-
-			#vieworth2 {
-				height: 40vh;
-				width: 40vw;
-				top: 40vh;
-				left: 60vw;
-			}
-
 			#viewtime {
 				height: 20vh;
 				width: 60vw;
 				top: 80vh;
 				left: 0vw;
-				background-color: black;
 			}
 		</style>
 	</head>
@@ -89,24 +81,27 @@
 		<script src="wsLocation.js"></script>
 
 		<div id="glcontainer">
-			<div id="view3d" class="panel">
-				<div class="info">
+			<div class="panel" style="height: 80vh; width: 60vw;">
+				<div class="panel-header">
 						Pulse Harmonia Demonstration
 						<form class="user-form">
 						<div class="field"><label>Stream 1: </label><input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host\',0xFFFFFF)"/> </div>
 						<div class="field"><label>Stream 2: </label><input type="text" id="flowgraph_host2" value="capacitor.eecs.umich.edu:18001" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host2\',0xFF00FF)"/> </div>
 						</form>
 				</div>
+				<div id="view3d" class="panel-content"></div>
 			</div>
-			<div id="vieworth1" class="panel">
-				<div class="info">
+			<div class="panel" style="height: 40vh; width: 40vw; top: 0vh; left: 60vw;">
+				<div class="panel-header">
 					Orthographic Top View
 				</div>
+				<div id="vieworth1" class="panel-content"></div>
 			</div>
-			<div id="vieworth2" class="panel">
-				<div class="info">
+			<div class="panel" style="height: 40vh; width: 40vw; top: 40vh; left: 60vw;">
+				<div class="panel-header">
 					Orthographic Side View
 				</div>
+				<div id="vieworth2" class="panel-content"></div>
 			</div>
 		</div>
 		<div id="viewtime" class="panel"></div>
@@ -252,8 +247,8 @@
 				view.camera.up.z = view.up[2];
 
 			
-				view.left = view.container.offsetLeft;
-				view.bottom = (parent_container.offsetTop+parent_container.offsetHeight)-(view.container.offsetTop+view.container.offsetHeight);
+				view.left = view.container.parentNode.offsetLeft;
+				view.bottom = (parent_container.offsetTop+parent_container.offsetHeight)-(view.container.parentNode.offsetTop+view.container.offsetTop+view.container.offsetHeight); //for some reason, pixel indexing is reversed in the y direction only...
 				view.width = view.container.offsetWidth;
 				view.height = view.container.offsetHeight;
 
