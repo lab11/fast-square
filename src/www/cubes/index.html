@@ -74,16 +74,17 @@
 			}
 
 			#viewmetric {
-				position: absolute;
+				font-family: monospace;
+				font-style: normal;
+				font-variant: normal;
+				font-weight: bold;
+
+				/*position: absolute;
 				top: 50%;
 				height: 10vh;
 				line-height: 10vh;
 				transform: translateY(-50%);
-				font-family: monospace;
-				font-size: 10vh;
-				font-style: normal;
-				font-variant: normal;
-				font-weight: bold;
+				font-size: 10vh;*/
 			}
 		</style>
 		<link rel="stylesheet" type="text/css" href="timeplot.css">
@@ -95,6 +96,8 @@
 
 		<script src="timeplot.js"></script>
 
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+		<script src="bigtext.js"></script>
 		<script src="../three.min.js"></script>
 		<script src="OrbitControls.js"></script>
 		<script src="wsLocation.js"></script>
@@ -143,7 +146,7 @@
 			<div id="viewtime" class="panel-content"></div>
 		</div>
 		<div class="panel" style="height: 20vh; width: 40vw; top: 80vh; left: 60vw;">
-			<div class="panel-header">
+			<div id="viewmetric-header" class="panel-header">
 				Localization Metric View:
 				<select>
 					<option value="1">1 sample</option>
@@ -167,9 +170,7 @@
 					<option value="b-z">Bz</option>
 				</select>
 			</div>
-			<div id="viewmetric" class="panel-content">
-				34.26&nbspcm
-			</div>
+			<div id="viewmetric" class="panel-content" style="width: 70%; display: block; height: 100%; left: 15%"><div>34.26&nbspcm</div></div>
 		</div>
 		<script>
 
@@ -209,6 +210,9 @@
 			];
 
 			function init() {
+				jQuery("#viewmetric").bigtext();
+
+				//Set up 3D stuff
 				timeplotInit("viewtime");
 
 				parent_container = document.getElementById("glcontainer");
@@ -269,6 +273,7 @@
 				controls.addEventListener( 'change', render );
 
 				window.addEventListener( 'resize', onWindowResize, false );
+				onWindowResize();
 
 				animate();
 
@@ -323,6 +328,19 @@
 
 			function onWindowResize() {
 
+				//Resize time plot
+				//TODO: This
+
+				//Resize metric viewport
+				var header = document.getElementById("viewmetric-header");
+				var header_height = header.offsetHeight;
+				var container_height = header.parentNode.offsetHeight;
+				var viewmetric = document.getElementById("viewmetric");
+				viewmetric.style.top = "" + header_height + "px";
+				viewmetric.style.height = "" + (container_height-header_height) + "px";
+				viewmetric.style.lineHeight = "" + (container_height-header_height) + "px";
+
+				//Resize all 3D viewports
 				for(var ii=0; ii < views.length; ii++){
 					resizeCamera(ii);
 				}
