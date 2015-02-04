@@ -3,7 +3,7 @@ function ret = analyzeHSCOMBData_bjt(varargin)
 p = inputParser;
 
 defaultOperation = 'localization';
-validOperations = {'localization','calibration','toa_calibration','post_localization'};
+validOperations = {'localization','calibration','toa_calibration','post_localization','reset_cal_data'};
 checkOperation = @(x) any(validatestring(x,validOperations));
 
 defaultPRFAlgorithm = 'normal';
@@ -46,6 +46,9 @@ fine_precision = 1e-9;
 stream_decim = 33;
 start_timepoint = 10;
 samples_per_freq = round(total_ticks/stream_decim);
+
+%Figure out which harmonics are in each snapshot
+num_harmonics_present = floor(sample_rate/prf);
 
 use_image = true;
 if(use_image)
@@ -154,6 +157,9 @@ elseif(strcmp(res.operation,'post_localization'))
 	est_positions = est_positions(est_positions(:,1) > 0,:);
 	save est_positions est_positions;
 	return;
+elseif(strcmp(res.operation,'reset_cal_data'))
+	tx_phasors = zeros(num_steps,num_harmonics_present);
+	save ../tx_phasors tx_phasors
 end
 
 %TODO: May need to selectively read parts of files since this is pretty memory-intense
@@ -183,9 +189,6 @@ physical_search_space = [x(:),y(:),z(:)];
 anchor_positions_reshaped = reshape(anchor_positions,[size(anchor_positions,1),1,size(anchor_positions,2)]);
 physical_distances = repmat(shiftdim(physical_search_space,-1),[size(anchor_positions,1),1,1])-repmat(anchor_positions_reshaped,[1,size(physical_search_space,1),1]);
 physical_distances = sqrt(sum(physical_distances.^2,3));
-
-%Figure out which harmonics are in each snapshot
-num_harmonics_present = floor(sample_rate/prf);
 
 cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
