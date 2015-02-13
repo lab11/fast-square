@@ -6,7 +6,7 @@ function ret = processCalData(anchor_direct_cal_paths,stationary_cal_path,statio
 cur_dir = pwd;
 
 %Zero out the tx_phasors calibration data
-analyzeHSCOMBData_bjt('operation','reset_cal_data');
+analyzeHSCOMBData_bjt('system_setup','diversity','operation','reset_cal_data');
 
 %Process calibration data for each anchor
 for ii=1:length(anchor_direct_cal_paths)
@@ -18,14 +18,14 @@ for ii=1:length(anchor_direct_cal_paths)
 	cd(cur_direct_cal_path);
 
 	%Process the calibration data
-	analyzeHSCOMBData_bjt('operation','calibration','anchor',ii);
+	analyzeHSCOMBData_bjt('system_setup','diversity-cal','operation','calibration','anchor',ii);
 
 	%Load the data which will be updated
 	load ../tx_phasors
 	tx_phasors_old = tx_phasors;
 
 	%Load in the ~10th timestep to use for the calibration data
-	jj = 10;
+	jj = 14;
 	successful_load = false;
 	while successful_load == false
 		try
@@ -33,6 +33,7 @@ for ii=1:length(anchor_direct_cal_paths)
 			successful_load = true;
 		catch
 			successful_load = false;
+			jj = jj + 5;
 		end
 	end
 
@@ -42,4 +43,7 @@ for ii=1:length(anchor_direct_cal_paths)
 end
 
 %Then process the toa_calibration data
-analyzeHSCOMBData_bjt('operation','toa_calibration','toa_cal_location',stationary_location);
+cd(cur_dir);
+cd(stationary_cal_path);
+analyzeHSCOMBData_bjt('system_setup','diversity','operation','localization','anchor',2);%,'prf_algorithm','fast');
+analyzeHSCOMBData_bjt('system_setup','diversity','operation','toa_calibration','toa_cal_location',stationary_location);

@@ -49,4 +49,5 @@ tx_phasors_reshaped = [tx_phasors_reshaped(:,133:end),tx_phasors_reshaped(:,1:13
 %end
 
 %Convert imp_toas to meters
-imp_toas = imp_toas/(2*prf_est*size(square_phasors_reshaped,2))/INTERP*3e8;
+imp_toa_idxs = imp_toas;
+imp_toas = imp_toas/(2*prf_est*size(square_phasors_reshaped,2))/(INTERP+1)*3e8;

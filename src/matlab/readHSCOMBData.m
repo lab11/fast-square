@@ -1,8 +1,8 @@
 function ret = readHSCOMBData(file_name, samples_per_freq)
 
 %Magic numbers and derived magic numbers
-skip_samples = 240;
-samples_per_trimmed_step = samples_per_freq-skip_samples-59;
+skip_samples = 280;
+samples_per_trimmed_step = samples_per_freq-skip_samples-59-6;
 
 fid = fopen(file_name,'r');
 %fseek(fid, offset,-1);
