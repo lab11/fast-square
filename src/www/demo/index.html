@@ -26,7 +26,6 @@
 
 			.user-form .field label {
 				display: inline-block;
-				width: 120px;
 				margin-left: 5px;
 			}
 
@@ -36,47 +35,70 @@
 
 			.panel {
 				position: absolute;
+				text-align: center;
+				border-style: solid;
+				border-width: 1px;
+				border-color: #000000;
 			}
 
 			.panel-header {
-				position: absolute;
-				background-color: black;
+				position: relative;
+				display: inline-block;
+				border-radius: 25px;
+				background-color: #303030;
 				top: 0px;
-				height: 20px;
-				width: 100%;
-				padding: 10px;
-				text-align: center;
+				padding: 5px 10px 5px 10px;
+				margin: 5px;
+				box-shadow: 5px 5px 5px #000000;
+				z-index: 100;
 			}
 
 			.panel-content {
 				position: absolute;
-				top: 40px;
+				top: 0px;
 				bottom: 0px;
 				width: 100%;
+				z-index: 1;
 			}
 
 			#glcontainer {
 				height: 80vh;
 				width: 100vw;
+				z-index: 10;
 			}
 
-			#viewtime {
-				height: 20vh;
-				width: 60vw;
-				top: 80vh;
-				left: 0vw;
+			#viewtime-graph {
+				position: absolute;
+				top: 0px;
+				left: 0px;
+			}
+
+			#viewmetric {
+				font-family: monospace;
+				font-style: normal;
+				font-variant: normal;
+				font-weight: bold;
+
+				/*position: absolute;
+				top: 50%;
+				height: 10vh;
+				line-height: 10vh;
+				transform: translateY(-50%);
+				font-size: 10vh;*/
 			}
 		</style>
+		<link rel="stylesheet" type="text/css" href="timeplot.css">
 	</head>
 	<body onload="init()">
 
 
 		<script src="http://d3js.org/d3.v3.min.js"></script>
 
-		<!--<script src="timeplot.js"></script>-->
+		<script src="timeplot.js"></script>
 
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+		<script src="bigtext.js"></script>
 		<script src="../three.min.js"></script>
-		<script src="../VRMLLoader.js"></script>
 		<script src="OrbitControls.js"></script>
 		<script src="wsLocation.js"></script>
 
@@ -85,8 +107,8 @@
 				<div class="panel-header">
 						Pulse Harmonia Demonstration
 						<form class="user-form">
-						<div class="field"><label>Stream 1: </label><input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host\',0xFFFFFF)"/> </div>
-						<div class="field"><label>Stream 2: </label><input type="text" id="flowgraph_host2" value="capacitor.eecs.umich.edu:18001" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host2\',0xFF00FF)"/> </div>
+						<div class="field"><label>Stream 1:&nbsp</label><input type="text" id="flowgraph_host" value="capacitor.eecs.umich.edu:18000" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host\',0xFFFFFF)"/> </div>
+						<div class="field"><label>Stream 2:&nbsp</label><input type="text" id="flowgraph_host2" value="capacitor.eecs.umich.edu:18001" size="35"/> <input type="submit" value="Connect" onclick="wsConnect(\'flowgraph_host2\',0xFF00FF)"/> </div>
 						</form>
 				</div>
 				<div id="view3d" class="panel-content"></div>
@@ -99,14 +121,57 @@
 			</div>
 			<div class="panel" style="height: 40vh; width: 40vw; top: 40vh; left: 60vw;">
 				<div class="panel-header">
-					Orthographic Side View
+					Orthographic Side View:
+					<select>
+						<option value="x">X</option>
+						<option value="y">Y</option>
+					</select>
 				</div>
 				<div id="vieworth2" class="panel-content"></div>
 			</div>
 		</div>
-		<div id="viewtime" class="panel"></div>
-		<div id="" class="panel"></div>
-
+		<div class="panel" style="height: 20vh; width: 60vw; top: 80vh; left: 0vw;">
+			<div class="panel-header">
+				Time Series View:
+				<select>
+					<option value="mag-a-b">|A-B|</option>
+					<option value="a-x">Ax</option>
+					<option value="a-y">Ay</option>
+					<option value="a-z">Az</option>
+					<option value="b-x">Bx</option>
+					<option value="b-y">By</option>
+					<option value="b-z">Bz</option>
+				</select>
+			</div>
+			<div id="viewtime" class="panel-content"></div>
+		</div>
+		<div class="panel" style="height: 20vh; width: 40vw; top: 80vh; left: 60vw;">
+			<div id="viewmetric-header" class="panel-header">
+				Localization Metric View:
+				<select>
+					<option value="1">1 sample</option>
+					<option value="10">10 sample</option>
+					<option value="100">100 sample</option>
+					<option value="1000">1000 sample</option>
+				</select>
+				<select>
+					<option value="mean">mean</option>
+					<option value="median">median</option>
+				</select>
+				<select>
+					<option value="mag-a-b">|A-B|</option>
+					<option value="a">A</option>
+					<option value="a-x">Ax</option>
+					<option value="a-y">Ay</option>
+					<option value="a-z">Az</option>
+					<option value="b">B</option>
+					<option value="b-x">Bx</option>
+					<option value="b-y">By</option>
+					<option value="b-z">Bz</option>
+				</select>
+			</div>
+			<div id="viewmetric" class="panel-content" style="width: 70%; display: block; height: 100%; left: 15%"><div>34.26&nbspcm</div></div>
+		</div>
 		<script>
 
 			var parent_container;
@@ -145,6 +210,11 @@
 			];
 
 			function init() {
+				jQuery("#viewmetric").bigtext();
+
+				//Set up 3D stuff
+				timeplotInit("viewtime");
+
 				parent_container = document.getElementById("glcontainer");
 
 				for(var ii=0; ii < views.length; ii++){
@@ -203,6 +273,7 @@
 				controls.addEventListener( 'change', render );
 
 				window.addEventListener( 'resize', onWindowResize, false );
+				onWindowResize();
 
 				animate();
 
@@ -257,6 +328,19 @@
 
 			function onWindowResize() {
 
+				//Resize time plot
+				//TODO: This
+
+				//Resize metric viewport
+				var header = document.getElementById("viewmetric-header");
+				var header_height = header.offsetHeight;
+				var container_height = header.parentNode.offsetHeight;
+				var viewmetric = document.getElementById("viewmetric");
+				viewmetric.style.top = "" + header_height + "px";
+				viewmetric.style.height = "" + (container_height-header_height) + "px";
+				viewmetric.style.lineHeight = "" + (container_height-header_height) + "px";
+
+				//Resize all 3D viewports
 				for(var ii=0; ii < views.length; ii++){
 					resizeCamera(ii);
 				}

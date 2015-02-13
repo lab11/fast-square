@@ -3,12 +3,16 @@ function ret = analyzeHSCOMBData_bjt(varargin)
 p = inputParser;
 
 defaultOperation = 'localization';
-validOperations = {'localization','calibration','toa_calibration','post_localization'};
+validOperations = {'localization','calibration','toa_calibration','diversity_localization','post_localization','reset_cal_data'};
 checkOperation = @(x) any(validatestring(x,validOperations));
 
 defaultPRFAlgorithm = 'normal';
 validPRFAlgorithms = {'normal','fast'};
 checkPRFAlgorithm = @(x) any(validatestring(x,validPRFAlgorithms));
+
+defaultSystemSetup = 'normal';
+validSystemSetups = {'normal','diversity','diversity-cal'};
+checkSystemSetup = @(x) any(validatestring(x,validSystemSetups));
 
 defaultAnchor = 1;
 defaultIFFreq = 990e6;
@@ -16,6 +20,7 @@ defaultCalLocation = [0 0 0];
 
 addParamValue(p,'operation', defaultOperation, checkOperation);
 addParamValue(p,'prf_algorithm',defaultPRFAlgorithm, checkPRFAlgorithm);
+addParamValue(p,'system_setup',defaultSystemSetup, checkSystemSetup);
 addParamValue(p,'anchor', defaultAnchor, @isnumeric);
 addParamValue(p,'if_freq', defaultIFFreq, @isnumeric);
 addParamValue(p,'toa_cal_location', defaultCalLocation, @ismatrix);
@@ -29,6 +34,7 @@ ticks_per_sequence = 4096+total_ticks*32;
 
 
 NUM_HIST = 10;
+INTERP = 64;
 
 %Define constantsf for this implementation
 start_lo_freq = 5.312e9;
@@ -44,8 +50,11 @@ prf_accuracy = 20e-6;
 coarse_precision = 1e-7;
 fine_precision = 1e-9;
 stream_decim = 33;
-start_timepoint = 10;
+start_timepoint = 14;
 samples_per_freq = round(total_ticks/stream_decim);
+
+%Figure out which harmonics are in each snapshot
+num_harmonics_present = floor(sample_rate/prf);
 
 use_image = true;
 if(use_image)
@@ -97,62 +106,197 @@ if(strcmp(res.operation,'toa_calibration'))
 		load(timestep_files(ii).name);
 		measured_toas = imp_toas-imp_toas(1);
 		measured_toa_errors(ii,:) = calculateAnchorErrors(anchor_positions, res.toa_cal_location, measured_toas);
+		measured_toa_errors(ii,:) = modImps(measured_toa_errors(ii,:),prf_est);
 	end
+	keyboard;
 	measured_toa_errors = median(measured_toa_errors,1);
 	save('../measured_toa_errors', 'measured_toa_errors');
+	return;
+elseif(strcmp(res.operation,'diversity_localization'))
+	load ../measured_toa_errors
+	timestep_files = dir('timestep*');
+	last_step_idx = 0;
+	for ii=1:length(timestep_files)
+		cand_idx = str2num(timestep_files(ii).name(9:end-4));
+		if(cand_idx > last_step_idx)
+			last_step_idx = cand_idx;
+		end
+	end
+	diversity_choices = [];
+	imp_toas_agg = [];
+	est_positions = zeros(5,1,3);
+	num_ests = 1;
+	for ii=start_timepoint:5:last_step_idx
+		%All five consecutive timesteps are necessary to calculate position
+		try
+			success = false;
+			for jj=1:5
+				load(['timestep',num2str(ii+jj)]);
+			end
+			success = true;
+		catch
+		end 
+
+		if(success)
+			imp_toas_agg = zeros(4,5);
+			diversity_choice = zeros(4,1);
+			imp_slopes = zeros(4,5);
+			for jj=1:5
+				load(['timestep',num2str(ii+jj)]);
+				est_positions(jj,num_ests,:) = est_position;
+				imp_toa_idxs_next = imp_toa_idxs + 5;
+				imp_toa_idxs_next(imp_toa_idxs_next > size(imp,2)) = imp_toa_idxs_next(imp_toa_idxs_next > size(imp,2)) - size(imp,2);
+				for kk=1:4
+					imp_slopes(kk,jj) = abs(imp(kk,imp_toa_idxs_next(kk))) - abs(imp(kk,imp_toa_idxs(kk)));
+				end
+				imp_toas = imp_toas - measured_toa_errors.';
+				imp_toas = modImps(imp_toas,prf_est);
+				imp_toas = imp_toas - imp_toas(1);
+				imp_toas_agg(:,jj) = imp_toas;
+			end
+			num_ests = num_ests + 1;
+			[~,diversity_choice(1)] = max(imp_slopes(1,1:3));
+			[~,diversity_choice(2)] = max(imp_slopes(2,3:5));
+			[~,diversity_choice(3)] = max(imp_slopes(3,1:3));
+			[~,diversity_choice(4)] = max(imp_slopes(4,3:5));
+			%[~,diversity_choice(1)] = min(imp_toas_agg(1,1:3)-imp_toas_agg(2,1:3));
+			%[~,diversity_choice(2)] = min(imp_toas_agg(2,3:5));
+			%[~,diversity_choice(3)] = min(imp_toas_agg(3,1:3)-imp_toas_agg(2,1:3));
+			%[~,diversity_choice(4)] = min(imp_toas_agg(4,3:5));
+			diversity_choices = [diversity_choices,diversity_choice];
+		end
+		%%If we have all five timepoints, start with 'best antenna' classification
+		%if(success)
+		%	los_ratios = zeros(4,5);
+		%	imp_toa_idxs_agg = zeros(size(anchor_positions,1),size(imp_toa_idxs,1));
+		%	for jj=1:5
+		%		load(['timestep',num2str(ii+jj)]);
+		%		imp_toa_idxs_agg(jj,:) = imp_toa_idxs;
+		%		for kk=1:4
+		%			%Calculate the los ratio by calculating los peak amplitude through successive addition
+		%			los_amp = 0;
+		%			idx_ctr = imp_toa_idxs(kk);
+		%			idx_tot = 0;
+		%			while(idx_tot < INTERP*2) %los_amp < abs(imp(kk,idx_ctr)))
+		%				los_amp = los_amp + abs(imp(kk,idx_ctr));
+		%				idx_tot = idx_tot + 1;
+		%				idx_ctr = idx_ctr + 1;
+		%				if(idx_ctr > size(imp,2))
+		%					idx_ctr = 1;
+		%				end
+		%			end
+		%			los_ratios(kk,jj) = los_amp;%/sum(abs(imp(kk,:)));
+		%		end
+		%	end
+	
+		%	%Which snapshot we use depends on the largest los ratio
+		%	[~,diversity_choice] = max(los_ratios,[],2);
+		%	%keyboard;
+
+		%	diversity_choices = [diversity_choices,diversity_choice(:)];
+
+		%	%Now convert each ToA back to its equivalent in the 1st timestep
+		%	for jj=1:4
+		%		cur_choice = diversity_choice(jj);
+		%		cur_toa_idx = imp_toa_idxs_agg(1,jj);
+		%		if(cur_choice == 1)
+		%			imp_toas(jj) = cur_toa_idx;
+		%		elseif(cur_choice == 2 || cur_choice == 3)
+		%			if(jj == 2 || jj == 4)
+		%				imp_toas(jj) = cur_toa_idx;
+		%			else
+		%				imp_toas(jj) = imp_toa_idxs_agg(cur_choice,jj) + (imp_toa_idxs_agg(1,2) - imp_toa_idxs_agg(cur_choice,2));
+		%			end
+		%		elseif(cur_choice == 4 || cur_choice == 5)
+		%			if(jj == 2 || jj == 4)
+		%				imp_toas(jj) = imp_toa_idxs_agg(cur_choice,jj) + (imp_toa_idxs_agg(3,1) - imp_toa_idxs_agg(cur_choice,1));
+		%				imp_toas(jj) = imp_toas(jj) + (imp_toa_idxs_agg(1,2) - imp_toa_idxs_agg(3,2));
+		%			else
+		%				imp_toas(jj) = imp_toa_idxs_agg(3,jj) + (imp_toa_idxs_agg(1,2) - imp_toa_idxs_agg(3,2));
+		%			end
+		%		end
+		%		imp_toas(jj) = imp_toas(jj)/(2*prf_est*num_steps*size(square_phasors,3)/2)/(INTERP+1)*3e8;%MAGIC NUMBER (/2)
+		%		imp_toas(jj) = imp_toas(jj)*2;
+		%	end
+		%	save(['timestep',num2str(ii+1)],'-append','imp_toas');
+		%	imp_toas_agg = [imp_toas_agg,imp_toas];
+		%end
+		ii
+	end
+	keyboard;
 	return;
 elseif(strcmp(res.operation,'post_localization'))
 	load('../measured_toa_errors');
 
 	%Loop through all post-processing data
 	timestep_files = dir('timestep*');
-	est_positions = zeros(length(timestep_files),3);
+	last_step_idx = 0;
 	for ii=1:length(timestep_files)
-		load(timestep_files(ii).name);
-		tic
-		imp_toas = imp_toas - measured_toa_errors.';
-		%Iteratively minimize the MSE between the position estimate and all TDoA
-		%measurements
-		est_position = [0,0,0];
-		position_step = 0.01;
-		poss_steps = PermsRep([-position_step, 0, position_step], 3);
-		new_est = true;
-		best_error = Inf;
-		while new_est
-		    cur_best_error = best_error;
-		    cur_best_error_idx = 1;
-		    for jj=1:size(poss_steps,1)
-		        cand_position = est_position + poss_steps(jj,:);
-		        cand_error = calculatePositionError(cand_position, anchor_positions, imp_toas, true);
-		        
-		        if cand_error < cur_best_error
-		            cur_best_error = cand_error;
-		            cur_best_error_idx = jj;
-		        end
-		    end
-		    
-		    if cur_best_error < best_error
-		        best_error = cur_best_error;
-		        est_position = est_position + poss_steps(cur_best_error_idx,:);
-		        new_est = true;
-		    else
-		        new_est = false;
-		    end
-		    
-		    if(sqrt(sum(est_position.^2)) > 10)
-		        est_position = [0, 0, 0];
-		        break;
-		    end
+		cand_idx = str2num(timestep_files(ii).name(9:end-4));
+		if(cand_idx > last_step_idx)
+			last_step_idx = cand_idx;
 		end
-		if(sum(abs(est_position)) > 0)
-			est_positions(ii,:) = est_position;
+	end
+	timestep_step = 1;
+	if(strcmp(res.system_setup,'diversity'))
+		timestep_step = 5;
+	end
+	est_positions = zeros(length(timestep_files),3);
+	for ii=15:timestep_step:last_step_idx
+		try
+			load(['timestep',num2str(ii)]);
+			tic
+			imp_toas = imp_toas - measured_toa_errors.';
+			imp_toas = modImps(imp_toas,prf_est);
+			%Iteratively minimize the MSE between the position estimate and all TDoA
+			%measurements
+			est_position = [0,0,0];
+			position_step = 0.01;
+			poss_steps = PermsRep([-position_step, 0, position_step], 3);
+			new_est = true;
+			best_error = Inf;
+			while new_est
+			    cur_best_error = best_error;
+			    cur_best_error_idx = 1;
+			    for jj=1:size(poss_steps,1)
+			        cand_position = est_position + poss_steps(jj,:);
+			        cand_error = calculatePositionError(cand_position, anchor_positions, imp_toas, true);
+			        
+			        if cand_error < cur_best_error
+			            cur_best_error = cand_error;
+			            cur_best_error_idx = jj;
+			        end
+			    end
+			    
+			    if cur_best_error < best_error
+			        best_error = cur_best_error;
+			        est_position = est_position + poss_steps(cur_best_error_idx,:);
+			        new_est = true;
+			    else
+			        new_est = false;
+			    end
+			    
+			    if(sqrt(sum(est_position.^2)) > 10)
+			        est_position = [0, 0, 0];
+			        break;
+			    end
+			end
+			if(sum(abs(est_position)) > 0)
+				est_positions(ii,:) = est_position;
+				save(['timestep',num2str(ii)],'-append','est_position');
+			end
+			ii
+			toc
+			%keyboard;
+		catch
 		end
-		ii
-		toc
-		keyboard;
 	end
 	est_positions = est_positions(est_positions(:,1) > 0,:);
 	save est_positions est_positions;
+	return;
+elseif(strcmp(res.operation,'reset_cal_data'))
+	tx_phasors = zeros(num_anchors,num_steps,num_harmonics_present);
+	save tx_phasors tx_phasors
 	return;
 end
 
@@ -184,9 +328,6 @@ anchor_positions_reshaped = reshape(anchor_positions,[size(anchor_positions,1),1
 physical_distances = repmat(shiftdim(physical_search_space,-1),[size(anchor_positions,1),1,1])-repmat(anchor_positions_reshaped,[1,size(physical_search_space,1),1]);
 physical_distances = sqrt(sum(physical_distances.^2,3));
 
-%Figure out which harmonics are in each snapshot
-num_harmonics_present = floor(sample_rate/prf);
-
 cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 
@@ -200,7 +341,11 @@ temp_to_tx = zeros(32,num_harmonics_present,size(data_iq,3));
 time_offset_maxs = [];
 square_ests = [];
 first_time = true;
-for cur_timepoint=start_timepoint:size(data_iq,3)
+time_step = 1;
+if(strcmp(res.system_setup,'diversity-cal'))
+	time_step = 5;
+end
+for cur_timepoint=start_timepoint:time_step:size(data_iq,3)
 	tic
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
 
@@ -210,17 +355,20 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 		continue;
 	end
 	
-	load ../tx_phasors;
+	if first_time
+		load ../tx_phasors;
+	end
 	if(strcmp(res.prf_algorithm,'fast'))
 		if first_time
 			prfSearch_init;
 			harmonicExtraction_bjt_init;
 		end
 		prfSearch_fast;
+		prf_est
 	else
 		prfSearch;
 	end
-	keyboard;
+	%keyboard;
 	if first_time
 		prf_est_history = repmat(prf_est,[NUM_HIST,1]);
 		first_time = false;
@@ -247,8 +395,8 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 	%%compensateMovement;
 	if(strcmp(res.operation,'calibration'))
 		processDirectSquare_bjt;%ONLY FOR CALIBRATION DATA
-		temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
-		keyboard;
+		temp_to_tx(:,:,cur_timepoint) = squeeze(angle(temp_phasors))-squeeze(angle(tx_phasors(prf_anchor,:,:)));
+		%keyboard;
 		
 		%Final phasor calibration step calculates any remaining phase accrual errors between LO steps
 		phase_accrual = squeeze(angle(square_phasors(prf_anchor,2:end,9:end))-angle(square_phasors(prf_anchor,1:end-1,1:8)));
@@ -263,8 +411,8 @@ for cur_timepoint=start_timepoint:size(data_iq,3)
 		harmonicLocalization_r7;
 		imp_toas = imp_toas*2;
 		toc
-		keyboard;
-		%save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
+		%keyboard;
+		save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'imp_toas', 'imp_toa_idxs', 'imp');%, 'est_likelihood', 'time_offset_max');
 	end
 
 	%save(['timestep',num2str(cur_timepoint)],'prf_est');

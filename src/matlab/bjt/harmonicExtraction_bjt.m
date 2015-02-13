@@ -27,4 +27,3 @@ for cur_anchor_idx = 1:size(anchor_positions,1)
 		end
 	end
 end
-
