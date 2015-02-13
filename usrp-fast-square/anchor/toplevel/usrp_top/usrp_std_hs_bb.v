@@ -245,6 +245,7 @@ module usrp_std_hs_bb
    wire fast_square_rx_record;
    wire ext_reset = rx_dsp_reset | ~io_rx_a[15];
  `ifdef RX_EN_0
+   wire [2:0] mod_counter;
    fast_square_bb_comb fsr0(
        .clock(clk64),
        .ext_reset(ext_reset),
@@ -255,7 +256,8 @@ module usrp_std_hs_bb
        .i_in(ddc0_in_i),//{rx_a_a,4'd0}),
        .q_in(ddc0_in_q),//{rx_b_a,4'd0}),
        .i_out(bb_rx_i0),
-       .q_out(bb_rx_q0)
+       .q_out(bb_rx_q0),
+       .mod_counter(mod_counter)
    );
  `else
    assign      bb_rx_i0=16'd0;
@@ -277,6 +279,28 @@ module usrp_std_hs_bb
        .rx_record(fast_square_rx_record),
        .debug(fast_square_debug)
    );
+
+   reg [1:0] anchor1_counter;
+   reg [1:0] anchor2_counter;
+   always @* begin
+     if(mod_counter < 3'd3)
+       anchor1_counter = 2'd0;
+     else if(mod_counter == 3'd3)
+       anchor1_counter = 2'd1;
+     else if(mod_counter == 3'd4)
+       anchor1_counter = 2'd2;
+     
+
+     if(mod_counter < 3'd3)
+       anchor2_counter = mod_counter[1:0];
+     else
+       anchor2_counter = 2'd2;
+   end
+
+   assign io_rx_a[8] = anchor1_counter[0];
+   assign io_rx_a[9] = anchor2_counter[0];
+   assign io_rx_a[10] = anchor1_counter[1];
+   assign io_rx_a[11] = anchor2_counter[1];
    assign io_rx_a[12] = fast_square_freq_step;
    assign io_rx_a[13] = rx_dsp_reset;
    assign io_rx_a[14] = ~rx_dsp_reset;
@@ -361,7 +385,7 @@ module usrp_std_hs_bb
    
    wire [15:0] unused_io_rx_a;
    io_pins io_pins
-     (.io_0(io_tx_a),.io_1({unused_io_rx_a[15:12],io_rx_a[11:0]}),.io_2(io_tx_b),.io_3(io_rx_b),
+     (.io_0(io_tx_a),.io_1({unused_io_rx_a[15:8],io_rx_a[7:0]}),.io_2(io_tx_b),.io_3(io_rx_b),
       .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3),
       .clock(clk64),.rx_reset(rx_dsp_reset),.tx_reset(tx_dsp_reset),
       .serial_addr(serial_addr),.serial_data(serial_data),.serial_strobe(serial_strobe));
