@@ -22,5 +22,9 @@
 ########################################################################
 install(FILES
     api.h
-    freq_stitcher.h DESTINATION include/fast_square
+    defines.h
+    harmonic_extractor.h
+    harmonic_localizer.h
+    prf_estimator.h
+    stream_parser.h DESTINATION include/fast_square
 )

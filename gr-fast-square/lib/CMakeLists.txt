@@ -26,11 +26,14 @@ include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
 
 list(APPEND fast_square_sources
-    freq_stitcher_impl.cc
+    harmonic_extractor_impl.cc
+    harmonic_localizer_impl.cc
+    prf_estimator_impl.cc
+    stream_parser_impl.cc
 )
 
 add_library(gnuradio-fast_square SHARED ${fast_square_sources})
-target_link_libraries(gnuradio-fast_square ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES})
+target_link_libraries(gnuradio-fast_square gnuradio-fft ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES})
 set_target_properties(gnuradio-fast_square PROPERTIES DEFINE_SYMBOL "gnuradio_fast_square_EXPORTS")
 
 ########################################################################

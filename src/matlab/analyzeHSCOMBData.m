@@ -2,6 +2,7 @@ RECORD_TICKS = 35000;
 total_ticks = RECORD_TICKS + 1 + 642 + 31;
 ticks_per_sequence = 4096+total_ticks*32;
 
+
 NUM_HIST = 10;
 
 %Define constantsf for this implementation
@@ -11,13 +12,16 @@ start_freq = start_lo_freq + if_freq;
 step_freq = -32e6;
 num_steps = 32;
 sample_rate = 64e6;
-decim_factor = 17;
+decim_factor = 33; %DEPENDENT ON FREQ
 carrier_freq = 5.792e9;
-square_freq = 4e6;
+square_freq = 2e6;
 square_accuracy = 30e-6;
-carrier_accuracy = 10e-6;
+carrier_accuracy = 20e-6;
 coarse_precision = 1e-7;
 fine_precision = 1e-9;
+stream_decim = 33;
+samples_per_freq = round(total_ticks/stream_decim);
+
 
 %Load calibration data
 load if_cal
@@ -58,14 +62,14 @@ num_anchors = size(anchor_positions,1);
 %TODO: May need to selectively read parts of files since this is pretty memory-intense
 smallest_num_timepoints = Inf;
 for ii=1:size(anchor_positions,1)
-	cur_data_iq = readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat']);
+	cur_data_iq = readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'],samples_per_freq);
 	if(size(cur_data_iq,2) < smallest_num_timepoints)
 		smallest_num_timepoints = size(cur_data_iq,2);
 	end
 end
 data_iq = zeros(size(anchor_positions,1),size(cur_data_iq,1),smallest_num_timepoints,size(cur_data_iq,3));
 for ii=1:size(anchor_positions,1)
-    cur_data_iq = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat']));
+    cur_data_iq = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'],samples_per_freq));
     data_iq(ii,:,:,:) = cur_data_iq(:,1:smallest_num_timepoints,:);
 
 end
@@ -83,6 +87,8 @@ physical_distances = sqrt(sum(physical_distances.^2,3));
 %Figure out which harmonics are in each snapshot
 num_harmonics_present = floor((sample_rate-square_freq)/(square_freq*2));
 
+keyboard;
+
 cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 %Loop through each timepoint
@@ -90,7 +96,7 @@ tx_phasors = zeros(num_steps,num_harmonics_present+1);
 temp_to_tx = zeros(32,8,size(data_iq,3));
 time_offset_maxs = [];
 square_ests = [];
-for cur_timepoint=2:size(data_iq,3)
+for cur_timepoint=10:size(data_iq,3)
 	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
     %Detect overflow issues
     overflow_sum = sum(abs(cur_iq_data),3);
@@ -99,7 +105,7 @@ for cur_timepoint=2:size(data_iq,3)
     end
     
     carrierSearch2;
-    if cur_timepoint == 2
+    if cur_timepoint == 10
         carrier_est_history = repmat(carrier_est,[NUM_HIST,1]);
         square_est_history = repmat(square_est,[NUM_HIST,1]);
     else
@@ -119,18 +125,18 @@ for cur_timepoint=2:size(data_iq,3)
     correctIFCal;
     compensateLOLength;
     %compensateMovement;
-%     processDirectSquare;
+%     processDirectSquare;%ONLY FOR CALIBRATION DATA
 %     temp_to_tx(:,:,cur_timepoint) = angle(temp_phasors)-angle(tx_phasors);
-    deconvolveSquare;
+    %deconvolveSquare;
     %keyboard;
     
 	%harmonicCalibration;
 
-	harmonicLocalization_r5;
+	%harmonicLocalization_r5;
     %keyboard;
     
 	%keyboard;
-	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
+	save(['timestep',num2str(cur_timepoint)], 'carrier_offset', 'square_est', 'square_phasors', 'tx_phasors');%, 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
 	full_search_flag = false;
     disp(['done with timepoint ', num2str(cur_timepoint)])
 end

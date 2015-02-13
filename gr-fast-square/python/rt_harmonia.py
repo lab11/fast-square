@@ -13,7 +13,6 @@ from gnuradio import uhd
 from gnuradio import wxgui
 from gnuradio import blocks
 from gnuradio import analog
-import fast_square
 from gnuradio.eng_option import eng_option
 from gnuradio.fft import window
 from gnuradio import filter
@@ -29,11 +28,13 @@ import time
 import wx
 import math
 import scopesink_cir
+import fast_square
+import sdrp
 
-class uhd_fft(grc_wxgui.top_block_gui):
+class uhd_fft(gr.top_block):
 
     def __init__(self, param_samp_rate, param_freq, param_gain, address, address2):
-        grc_wxgui.top_block_gui.__init__(self, title="UHD FFT")
+        super(uhd_fft, self).__init__()
 
         ##################################################
         # Parameters
@@ -67,13 +68,13 @@ class uhd_fft(grc_wxgui.top_block_gui):
         self.gain = gain = param_gain
         self.freq = freq = param_freq
         self.ant = ant = "J1"
-	self.test = options.test
+	self.fromfile = options.fromfile
 	self.tofile = options.tofile
 
         ##################################################
         # Blocks
         ##################################################
-	if self.test == False:
+	if self.fromfile == False:
 	        self.source = uhd.usrp_source(
 	        	device_addr=address,
 	        	stream_args=uhd.stream_args(
@@ -131,17 +132,6 @@ class uhd_fft(grc_wxgui.top_block_gui):
 		#self.source2.set_gain(self.gc1, "GC1", 1)
 	        self.source2.set_bandwidth(self.bw, 1)
 
-
-
-	else:
-		self.source_pre = blocks.file_source(gr.sizeof_gr_complex, "test.dat", True)
-		self.source = blocks.throttle(gr.sizeof_gr_complex*1, samp_rate)
-		self.connect(self.source_pre, self.source)
-		self.source_freqs_pre = blocks.file_source(gr.sizeof_gr_complex, "test_freqs.dat", True)
-		self.source_freqs = blocks.throttle(gr.sizeof_gr_complex*1, samp_rate)
-		self.connect(self.source_freqs_pre, self.source_freqs)
-
-
         ##################################################
         # Connections
         ##################################################
@@ -149,19 +139,65 @@ class uhd_fft(grc_wxgui.top_block_gui):
 	#Actual demo code
 	#self.stitcher = fast_square.freq_stitcher("cal.dat",14*4)
 
-	if self.test == True:
-		self.connect(self.source_freqs, self.stitcher)
+	if self.tofile == True:
+		self.logfile0 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan0.dat")
+		self.connect((self.source, 0), self.logfile0)
+		self.logfile1 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan1.dat")
+		self.connect((self.source, 1), self.logfile1)
+		self.logfile2 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan2.dat")
+		self.connect((self.source2, 0), self.logfile2)
+		self.logfile3 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan3.dat")
+		self.connect((self.source2, 1), self.logfile3)
 	else:
-		if self.tofile == True:
-			self.logfile0 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan0.dat")
-			self.connect((self.source, 0), self.logfile0)
-			self.logfile1 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan1.dat")
-			self.connect((self.source, 1), self.logfile1)
-			self.logfile2 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan2.dat")
-			self.connect((self.source2, 0), self.logfile2)
-			self.logfile3 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan3.dat")
-			self.connect((self.source2, 1), self.logfile3)
-		#self.connect((self.source, 1), self.stitcher)
+		self.parser = fast_square.stream_parser()
+		if self.fromfile == True:
+			self.logfile0 = blocks.file_source(gr.sizeof_gr_complex, "usrp_chan0.dat", True)
+			self.logfile1 = blocks.file_source(gr.sizeof_gr_complex, "usrp_chan1.dat", True)
+			self.logfile2 = blocks.file_source(gr.sizeof_gr_complex, "usrp_chan2.dat", True)
+			self.logfile3 = blocks.file_source(gr.sizeof_gr_complex, "usrp_chan3.dat", True)
+			self.connect(self.logfile0, (self.parser, 0))
+			self.connect(self.logfile1, (self.parser, 1))
+			self.connect(self.logfile2, (self.parser, 2))
+			self.connect(self.logfile3, (self.parser, 3))
+		else:
+			self.connect((self.source, 0), (self.parser, 0))
+			self.connect((self.source, 1), (self.parser, 1))
+			self.connect((self.source2, 0), (self.parser, 2))
+			self.connect((self.source2, 1), (self.parser, 3))
+
+		##The rest of the harmonia flowgraph
+		self.prf_est = fast_square.prf_estimator(1024, True, [], False, 1, "prf_est")
+		self.connect((self.parser, 0), (self.prf_est, 0))
+		self.connect((self.parser, 1), (self.prf_est, 1))
+		self.connect((self.parser, 2), (self.prf_est, 2))
+		self.connect((self.parser, 3), (self.prf_est, 3))
+		self.h_extract = fast_square.harmonic_extractor(1024, 1, "prf_est", "phasor_calc", "harmonic_freqs")
+		self.connect((self.prf_est, 0), (self.h_extract, 0))
+		self.connect((self.prf_est, 1), (self.h_extract, 1))
+		self.connect((self.prf_est, 2), (self.h_extract, 2))
+		self.connect((self.prf_est, 3), (self.h_extract, 3))
+		self.h_locate = fast_square.harmonic_localizer("phasor_calc", "harmonic_freqs", "prf_est", "Sek5SXpFPa", 1)
+		self.connect((self.h_extract, 0), (self.h_locate, 0))
+		self.connect((self.h_extract, 1), (self.h_locate, 1))
+		self.connect((self.h_extract, 2), (self.h_locate, 2))
+		self.connect((self.h_extract, 3), (self.h_locate, 3))
+
+		#TODO: Put this back in once we want to push to gatd
+#		self.socket_pdu = blocks.socket_pdu("UDP_CLIENT", "inductor.eecs.umich.edu", "4001", 10000)
+#		self.msg_connect(self.h_locate, "frame_out", self.socket_pdu, "pdus")
+
+		##WebSocket output for connection to remote visualization interface
+		self.ws_port = sdrp.ws_sink_c(True, 18000, "FLOAT", "")
+		self.msg_connect(self.h_locate, "frame_out", self.ws_port, "ws_pdu_in")
+
+		#self.ns0 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
+		#self.ns1 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
+		#self.ns2 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
+		#self.ns3 = blocks.null_sink(1024*32*gr.sizeof_gr_complex)
+		#self.connect((self.h_extract, 0), self.ns0)
+		#self.connect((self.h_extract, 1), self.ns1)
+		#self.connect((self.h_extract, 2), self.ns2)
+		#self.connect((self.h_extract, 3), self.ns3)
 
 if __name__ == '__main__':
     parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
@@ -175,15 +211,16 @@ if __name__ == '__main__':
         help="Set IP Address [default=%default]")
     parser.add_option("--address2", dest="address2", type="string", default="serial=7R24X9U1, fpga=usrp1_bb_comb_2mhz.rbf",
         help="Set IP Address [default=%default]")
-    parser.add_option("--test", action="store_true", default=False,
-        help="Feed with data from test file")
     parser.add_option("--tofile", action="store_true", default=False,
         help="Push channel 2 data to file")
+    parser.add_option("--fromfile", action="store_true", default=False,
+        help="Read USRP data stream from file")
     (options, args) = parser.parse_args()
     tb = uhd_fft(param_samp_rate=options.param_samp_rate, param_freq=options.param_freq, param_gain=options.param_gain, address=options.address, address2=options.address2)
-    tb.Start(True)
-    time.sleep(100.0)
-    tb.lock()
-    tb.stop()
-    #tb.Wait()
+    tb.run()
+    tb.Wait()
+    #tb.Start(True)
+    #time.sleep(100.0)
+    #tb.lock()
+    #tb.stop()
 

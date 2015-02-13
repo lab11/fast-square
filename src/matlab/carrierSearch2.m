@@ -4,6 +4,8 @@ if(~(carrier_segment <= num_steps && carrier_segment > 0))
     carrier_segment = 1;
 end
 
+carrier_anchor = 4;
+
 %Start by searching for the apparent carrier offset contained within the segment which contains it
 %The carrier isn't necessarily present because it gets attenuated by the COMB filter.
 %However, it can be inferred by determinig which carrier offset best approximates expected square wave harmonics
@@ -23,7 +25,7 @@ if(full_search_flag)
 		cur_corr = 0;
 		for harmonic_num = -num_harmonics_present:2:num_harmonics_present
 			cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(square_freq*harmonic_num+carrier_est)/(sample_rate/decim_factor));
-			cur_bb = cur_bb .* squeeze(cur_iq_data(4,carrier_segment, :)).';
+			cur_bb = cur_bb .* squeeze(cur_iq_data(carrier_anchor,carrier_segment, :)).';
 	
 			cur_corr = cur_corr + abs(sum(cur_bb));
 		end
@@ -44,6 +46,7 @@ if(full_search_flag)
 	corr_max = 0;
 	square_corr_max_idx = 1;
 	cur_idx = 1;
+    bb_tot = zeros(size(cur_data_iq,1),size(cur_data_iq,3));
 	for square_est = square_coarse_search
 		for cur_freq_step = 1:size(cur_iq_data,2)
 			cur_corr = 0;
@@ -53,8 +56,8 @@ if(full_search_flag)
 						carrier_est+...
 						(carrier_segment-cur_freq_step)*(step_freq-square_est)*(step_freq/square_freq)...
 					)/(sample_rate/decim_factor));
-				cur_bb = cur_bb .* squeeze(cur_iq_data(4,cur_freq_step, :)).';
-		
+                bb_tot(cur_freq_step,:) = bb_tot(cur_freq_step,:) + conj(cur_bb);
+				cur_bb = cur_bb .* squeeze(cur_iq_data(carrier_anchor,cur_freq_step, :)).';
 				cur_corr = cur_corr + abs(sum(cur_bb));
 			end
 		end
@@ -90,7 +93,7 @@ end
 %                 (carrier_est)...
 %             )/(sample_rate/decim_factor));
 %             bb_tot = bb_tot + conj(cur_bb);
-%             cur_bb = cur_bb .* squeeze(cur_iq_data(4,carrier_segment, :)).';
+%             cur_bb = cur_bb .* squeeze(cur_iq_data(carrier_anchor,carrier_segment, :)).';
 % 
 %             cur_corr = cur_corr + abs(sum(cur_bb));%sum(abs(fft(cur_bb))+abs(fft(conj(cur_bb))));
 %         end
@@ -132,7 +135,7 @@ while new_est
                     (carrier_segment-cur_freq_step)*(step_freq-(square_est+step_sizes(cur_step_idx,2))*(step_freq/square_freq))...
                 )/(sample_rate/decim_factor));
                 bb_tot(cur_freq_step,:) = bb_tot(cur_freq_step,:) + conj(cur_bb);
-                cur_bb = cur_bb .* squeeze(cur_iq_data(4,cur_freq_step, :)).';
+                cur_bb = cur_bb .* squeeze(cur_iq_data(carrier_anchor,cur_freq_step, :)).';
 
                 cur_corr = cur_corr + abs(sum(cur_bb));
             end
@@ -145,8 +148,8 @@ while new_est
     end
 
     if(corr_max > cur_corr_max)
-        cur_corr_max = corr_max;
-        square_est = square_est + step_sizes(corr_max_idx,2);
+        cur_corr_max = corr_max
+        square_est = square_est + step_sizes(corr_max_idx,2)
         new_est = true;
     else
         new_est = false;
@@ -164,8 +167,8 @@ end
 %         square_est*harmonic_num+...
 %         carrier_est...
 %     )/(sample_rate/decim_factor));
-%     cur_phasors(harmonic_idx) = sum(cur_bb.*squeeze(cur_iq_data(4,carrier_segment,:)).');
-%     next_phasors(harmonic_idx) = sum(cur_bb.*squeeze(next_iq_data(4,carrier_segment,:)).');
+%     cur_phasors(harmonic_idx) = sum(cur_bb.*squeeze(cur_iq_data(carrier_anchor,carrier_segment,:)).');
+%     next_phasors(harmonic_idx) = sum(cur_bb.*squeeze(next_iq_data(carrier_anchor,carrier_segment,:)).');
 %     
 %     %Add time delay to current_phasors in order to compare with next_phasors
 %     cur_phasors(harmonic_idx) = cur_phasors(harmonic_idx).*exp(1i*2*pi*(square_est*harmonic_num+carrier_est)/(sample_rate/decim_factor)*(ticks_per_sequence/decim_factor));
@@ -202,7 +205,7 @@ end
 %         cur_bb = exp(-1i*(0:size(cur_iq_data,3)-1)*2*pi*(...
 %             (carrier_est+step_sizes(cur_step_idx,1))...
 %         )/(sample_rate/decim_factor));
-%         cur_bb = cur_bb .* squeeze(cur_iq_data(4,carrier_segment, :)).';
+%         cur_bb = cur_bb .* squeeze(cur_iq_data(carrier_anchor,carrier_segment, :)).';
 % 
 %         cur_corr = sum(abs(fft(cur_bb))+abs(fft(conj(cur_bb))));
 % 
@@ -237,7 +240,7 @@ while new_est
                 (square_est+step_sizes(cur_step_idx,2))*harmonic_num+...
                 (carrier_est+step_sizes(cur_step_idx,1))...
             )/(sample_rate/decim_factor));
-            cur_bb = cur_bb .* squeeze(cur_iq_data(4,carrier_segment, :)).';
+            cur_bb = cur_bb .* squeeze(cur_iq_data(carrier_anchor,carrier_segment, :)).';
 
             cur_corr = cur_corr + abs(sum(cur_bb));
         end
@@ -249,9 +252,9 @@ while new_est
     end
 
     if(corr_max > cur_corr_max)
-        cur_corr_max = corr_max;
-        carrier_est = carrier_est + step_sizes(corr_max_idx,1);
-        square_est = square_est + step_sizes(corr_max_idx,2);
+        cur_corr_max = corr_max
+        carrier_est = carrier_est + step_sizes(corr_max_idx,1)
+        square_est = square_est + step_sizes(corr_max_idx,2)
         new_est = true;
     else
         new_est = false;
@@ -260,6 +263,6 @@ end
 
 
 carrier_offset = carrier_est;
-time_offset_max
+%time_offset_max
 carrier_est
 square_est
