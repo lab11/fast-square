@@ -4,6 +4,7 @@
 
 #include <fast_square/stream_parser.h>
 #include <fast_square/defines.h>
+#include <fstream>
 
 namespace gr {
 namespace fast_square {
@@ -19,6 +20,7 @@ private:
 	uint32_t getSequenceNum(gr_complex data);
 	bool d_restarted[4];
 	bool d_wait_for_restart;
+	std::vector<std::ofstream*> timestamp_files;
 
 protected:
 
