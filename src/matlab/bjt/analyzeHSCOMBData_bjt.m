@@ -35,6 +35,7 @@ ticks_per_sequence = 4096+total_ticks*32;
 
 NUM_HIST = 10;
 INTERP = 64;
+THRESH = 0.2;
 
 %Define constantsf for this implementation
 start_lo_freq = 5.312e9;
@@ -50,7 +51,8 @@ prf_accuracy = 20e-6;
 coarse_precision = 1e-7;
 fine_precision = 1e-9;
 stream_decim = 33;
-start_timepoint = 14;
+start_timepoint = 15;
+restart_samples = 101;
 samples_per_freq = round(total_ticks/stream_decim);
 
 %Figure out which harmonics are in each snapshot
@@ -89,31 +91,71 @@ lo_lengths = lo_lengths/0.85;
 
 %These are the anchor positions in the third placement -- more spaced out
 %in y and z directions
-anchor_positions = [...
-    2.405, 3.815, 2.992;...
-    2.105, 0.034, 2.494;...
-    4.108, 0.347, 1.543;...
-    0.273, 0.343, 1.56 ...
+%anchor_positions = [...
+%    2.405, 3.815, 2.992;...
+%    2.105, 0.034, 2.494;...
+%    4.108, 0.347, 1.543;...
+%    0.273, 0.343, 1.56 ...
+%];
+anchor_positions = zeros(4,3,3);
+anchor_positions(1,:,:) = [...
+	2.425, 3.910, 3.008;...
+	2.400, 3.808, 3.008;...
+	2.334, 3.855, 2.945 ...
 ];
+anchor_positions(2,:,:) = [
+	2.125, 0.000, 2.559;...
+	2.125, 0.000, 2.454;...
+	2.040, 0.000, 2.507 ...
+];
+anchor_positions(3,:,:) = [
+	4.219, 0.486, 1.635;...
+	4.157, 0.404, 1.649;...
+	4.198, 0.458, 1.728 ...
+]-.113;
+anchor_positions(4,:,:) = [
+	0.326, 0.441, 1.649;...
+	0.424, 0.441, 1.649;...
+	0.374, 0.441, 1.738 ...
+]-.113;
 num_anchors = size(anchor_positions,1);
 
 %Check to see if we're performing toa calibration (which comes after running an entire dataset)
 if(strcmp(res.operation,'toa_calibration'))
 	%Loop through all post-processing data
 	timestep_files = dir('timestep*');
-	measured_toa_errors = zeros(length(timestep_files),4);
+	last_step_idx = 0;
 	for ii=1:length(timestep_files)
-		load(timestep_files(ii).name);
-		measured_toas = imp_toas-imp_toas(1);
-		measured_toa_errors(ii,:) = calculateAnchorErrors(anchor_positions, res.toa_cal_location, measured_toas);
-		measured_toa_errors(ii,:) = modImps(measured_toa_errors(ii,:),prf_est);
+		cand_idx = str2num(timestep_files(ii).name(9:end-4));
+		if(cand_idx > last_step_idx)
+			last_step_idx = cand_idx;
+		end
+	end
+
+	measured_toa_errors = [];
+	for ii=start_timepoint:3:last_step_idx
+		try
+			load(['timestep',num2str(ii)]);
+			anchor_positions_div = zeros(num_anchors,3);
+			for jj=1:num_anchors
+				anchor_positions_div(jj,:) = anchor_positions(jj,diversity_choice(jj),:);
+				imp_toas(jj) = imp_toas_div(jj,diversity_choice(jj));
+			end
+			measured_toas = imp_toas - imp_toas(1);
+			measured_toa_errors = [measured_toa_errors;calculateAnchorErrors(anchor_positions_div, res.toa_cal_location, measured_toas).'];
+			measured_toa_errors(end,:) = modImps(measured_toa_errors(end,:),prf_est);
+		catch
+		end
+		%load(timestep_files(ii).name);
+		%measured_toas = imp_toas-imp_toas(1);
+		%measured_toa_errors(ii,:) = calculateAnchorErrors(anchor_positions, res.toa_cal_location, measured_toas);
+		%measured_toa_errors(ii,:) = modImps(measured_toa_errors(ii,:),prf_est);
 	end
 	keyboard;
 	measured_toa_errors = median(measured_toa_errors,1);
 	save('../measured_toa_errors', 'measured_toa_errors');
 	return;
 elseif(strcmp(res.operation,'diversity_localization'))
-	load ../measured_toa_errors
 	timestep_files = dir('timestep*');
 	last_step_idx = 0;
 	for ii=1:length(timestep_files)
@@ -124,46 +166,92 @@ elseif(strcmp(res.operation,'diversity_localization'))
 	end
 	diversity_choices = [];
 	imp_toas_agg = [];
-	est_positions = zeros(5,1,3);
-	num_ests = 1;
-	for ii=start_timepoint:5:last_step_idx
+	est_positions = zeros(3,1,3);
+	for ii=start_timepoint:3:last_step_idx
 		%All five consecutive timesteps are necessary to calculate position
 		try
 			success = false;
-			for jj=1:5
-				load(['timestep',num2str(ii+jj)]);
+			for jj=1:3
+				load(['timestep',num2str(ii+jj-1)]);
 			end
 			success = true;
 		catch
 		end 
 
 		if(success)
-			imp_toas_agg = zeros(4,5);
-			diversity_choice = zeros(4,1);
-			imp_slopes = zeros(4,5);
-			for jj=1:5
-				load(['timestep',num2str(ii+jj)]);
-				est_positions(jj,num_ests,:) = est_position;
-				imp_toa_idxs_next = imp_toa_idxs + 5;
-				imp_toa_idxs_next(imp_toa_idxs_next > size(imp,2)) = imp_toa_idxs_next(imp_toa_idxs_next > size(imp,2)) - size(imp,2);
-				for kk=1:4
-					imp_slopes(kk,jj) = abs(imp(kk,imp_toa_idxs_next(kk))) - abs(imp(kk,imp_toa_idxs(kk)));
-				end
-				imp_toas = imp_toas - measured_toa_errors.';
-				imp_toas = modImps(imp_toas,prf_est);
-				imp_toas = imp_toas - imp_toas(1);
-				imp_toas_agg(:,jj) = imp_toas;
+			imp_agg = zeros([size(imp),3]);
+			imp_toa_idxs_agg = zeros(4,3);
+			prf_est_agg = zeros(1,3);
+			drift_time_in_samples = 0;
+			div_metric = zeros(4,3);
+			%Start by refactoring ToA estimates by using 20% of the max amplitude instead of 20% of each snapshot
+			for jj=1:3
+				load(['timestep',num2str(ii+jj-1)]);
+				imp_agg(:,:,jj) = imp;
 			end
-			num_ests = num_ests + 1;
-			[~,diversity_choice(1)] = max(imp_slopes(1,1:3));
-			[~,diversity_choice(2)] = max(imp_slopes(2,3:5));
-			[~,diversity_choice(3)] = max(imp_slopes(3,1:3));
-			[~,diversity_choice(4)] = max(imp_slopes(4,3:5));
-			%[~,diversity_choice(1)] = min(imp_toas_agg(1,1:3)-imp_toas_agg(2,1:3));
-			%[~,diversity_choice(2)] = min(imp_toas_agg(2,3:5));
-			%[~,diversity_choice(3)] = min(imp_toas_agg(3,1:3)-imp_toas_agg(2,1:3));
-			%[~,diversity_choice(4)] = min(imp_toas_agg(4,3:5));
-			diversity_choices = [diversity_choices,diversity_choice];
+			imp_maxs = max(squeeze(max(abs(imp_agg),[],2)),[],2);
+			imp_toa_div_idxs = zeros(num_anchors,1);
+			for jj=1:3
+				for kk=1:num_anchors
+					cand_toa = impThresh(abs(imp_agg(kk,:,jj)),imp_maxs(kk)*THRESH);
+					if(length(cand_toa) == 1)
+						imp_toa_div_idxs(kk) = cand_toa;
+					end
+				end
+				save(['timestep',num2str(ii+jj-1)],'-append','imp_toa_div_idxs');
+			end
+
+			for jj=1:3
+				load(['timestep',num2str(ii+jj-1)]);
+				
+				%Compensate for drift due to time between datasets
+				imp_toa_div_idxs = imp_toa_div_idxs - round(drift_time_in_samples);
+				imp_toa_div_idxs = mod(imp_toa_div_idxs-1,size(imp,2))+1; %Have to remember we're not using 0-indexing...
+
+				%Increment drift time due to current pulse repetition frequency
+				drift_time_in_samples = drift_time_in_samples + (prf-prf_est)*(ticks_per_sequence/sample_rate)*size(imp,2);
+
+				imp_toa_idxs_agg(:,jj) = imp_toa_div_idxs;
+				prf_est_agg(jj) = prf_est;
+
+				for kk=1:4
+					%Calculate the los ratio by calculating los peak amplitude through successive addition
+					los_amp = 0;
+					idx_ctr = imp_toa_div_idxs(kk);
+					idx_tot = 0;
+					while(idx_tot < INTERP/2)
+						los_amp = los_amp + abs(imp(kk,idx_ctr));
+						idx_tot = idx_tot + 1;
+						idx_ctr = idx_ctr + 1;
+						if(idx_ctr > size(imp,2))
+							idx_ctr = 1;
+						end
+					end
+					div_metric(kk,jj) = max(abs(imp(kk,:)));%los_amp;
+				end
+			end
+
+			imp_toa_idxs_div = zeros(4,3);
+			imp_toa_idxs_div = imp_toa_idxs_agg;
+
+			div_metric2 = zeros(4,3);
+			div_metric2 = div_metric;
+
+			imp_toas_div = imp_toa_idxs_div/(2*prf_est*num_steps*size(square_phasors,3)/2)/(INTERP+1)*3e8;
+			imp_toas_div = imp_toas_div*2;
+
+			%Diversity choice option #1: lowest ToA
+			half_prf = prf_est/2;
+			temp_toas_div = imp_toas_div - repmat(imp_toas_div(:,1),[1,size(imp_toas_div,2)]);
+			temp_toas_div(temp_toas_div > half_prf) = temp_toas_div(temp_toas_div > half_prf) - prf_est;
+			temp_toas_div(temp_toas_div < -half_prf) = temp_toas_div(temp_toas_div < -half_prf) + prf_est;
+			[~,diversity_choice] = min(temp_toas_div,[],2);
+
+			%%Diversity choice option #1: Highest div metric
+			%[~,diversity_choice] = max(div_metric2,[],2);
+
+			save(['timestep',num2str(ii)],'-append','imp_toas_div','diversity_choice');
+			
 		end
 		%%If we have all five timepoints, start with 'best antenna' classification
 		%if(success)
@@ -223,7 +311,6 @@ elseif(strcmp(res.operation,'diversity_localization'))
 		%end
 		ii
 	end
-	keyboard;
 	return;
 elseif(strcmp(res.operation,'post_localization'))
 	load('../measured_toa_errors');
@@ -239,13 +326,20 @@ elseif(strcmp(res.operation,'post_localization'))
 	end
 	timestep_step = 1;
 	if(strcmp(res.system_setup,'diversity'))
-		timestep_step = 5;
+		timestep_step = 3;
 	end
 	est_positions = zeros(length(timestep_files),3);
-	for ii=15:timestep_step:last_step_idx
+	toa_hist = zeros(length(timestep_files),4);
+	diversity_choices = zeros(length(timestep_files),4);
+	for ii=start_timepoint:timestep_step:last_step_idx
 		try
 			load(['timestep',num2str(ii)]);
 			tic
+			if(strcmp(res.system_setup,'diversity'))
+				for jj=1:length(diversity_choice)
+					imp_toas(jj) = imp_toas_div(jj,diversity_choice(jj));
+				end
+			end
 			imp_toas = imp_toas - measured_toa_errors.';
 			imp_toas = modImps(imp_toas,prf_est);
 			%Iteratively minimize the MSE between the position estimate and all TDoA
@@ -260,7 +354,12 @@ elseif(strcmp(res.operation,'post_localization'))
 			    cur_best_error_idx = 1;
 			    for jj=1:size(poss_steps,1)
 			        cand_position = est_position + poss_steps(jj,:);
-			        cand_error = calculatePositionError(cand_position, anchor_positions, imp_toas, true);
+
+				anchor_positions_div = zeros(num_anchors,3);
+				for kk=1:num_anchors
+					anchor_positions_div(kk,:) = anchor_positions(kk,diversity_choice(kk),:);
+				end
+			        cand_error = calculatePositionError(cand_position, anchor_positions_div, imp_toas, true);
 			        
 			        if cand_error < cur_best_error
 			            cur_best_error = cand_error;
@@ -283,16 +382,23 @@ elseif(strcmp(res.operation,'post_localization'))
 			end
 			if(sum(abs(est_position)) > 0)
 				est_positions(ii,:) = est_position;
+				toa_hist(ii,:) = imp_toas;
+				good_ests(ii) = ii;
+				diversity_choices(ii,:) = diversity_choice;
 				save(['timestep',num2str(ii)],'-append','est_position');
 			end
 			ii
 			toc
+			est_positions(ii,:)
 			%keyboard;
 		catch
 		end
 	end
+	toa_hist = toa_hist(est_positions(:,1) > 0,:);
+	good_ests = good_ests(est_positions(:,1) > 0);
+	diversity_choices = diversity_choices(est_positions(:,1) > 0,:);
 	est_positions = est_positions(est_positions(:,1) > 0,:);
-	save est_positions est_positions;
+	save est_positions est_positions toa_hist good_ests diversity_choices;
 	return;
 elseif(strcmp(res.operation,'reset_cal_data'))
 	tx_phasors = zeros(num_anchors,num_steps,num_harmonics_present);
@@ -300,54 +406,70 @@ elseif(strcmp(res.operation,'reset_cal_data'))
 	return;
 end
 
-%TODO: May need to selectively read parts of files since this is pretty memory-intense
-smallest_num_timepoints = Inf;
-for ii=1:size(anchor_positions,1)
-	cur_data_iq = readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'],samples_per_freq);
-	if(size(cur_data_iq,2) < smallest_num_timepoints)
-		smallest_num_timepoints = size(cur_data_iq,2);
-	end
-end
-data_iq = zeros(size(anchor_positions,1),size(cur_data_iq,1),smallest_num_timepoints,size(cur_data_iq,3));
-for ii=1:size(anchor_positions,1)
-    cur_data_iq = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'],samples_per_freq));
-    data_iq(ii,:,:,:) = cur_data_iq(:,1:smallest_num_timepoints,:);
+%%TODO: May need to selectively read parts of files since this is pretty memory-intense
+%smallest_num_timepoints = Inf;
+%for ii=1:size(anchor_positions,1)
+%	cur_data_iq = readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'],samples_per_freq);
+%	if(size(cur_data_iq,2) < smallest_num_timepoints)
+%		smallest_num_timepoints = size(cur_data_iq,2);
+%	end
+%end
+%data_iq = zeros(size(anchor_positions,1),size(cur_data_iq,1),smallest_num_timepoints,size(cur_data_iq,3));
+%for ii=1:size(anchor_positions,1)
+%    cur_data_iq = shiftdim(readHSCOMBData(['usrp_chan', num2str(ii-1), '.dat'],samples_per_freq));
+%    data_iq(ii,:,:,:) = cur_data_iq(:,1:smallest_num_timepoints,:);
+%
+%end
+%if(use_image)
+%	data_iq = conj(data_iq);
+%end
 
-end
-if(use_image)
-	data_iq = conj(data_iq);
-end
+%%Construct a candidate search space over which to look for the tag
+%[x,y,z] = meshgrid(0:.05:4,0:.05:4,-.65);%-2:.05:2);
+%physical_search_space = [x(:),y(:),z(:)];
+%
+%%Pre-calculate distances from each point on search space to corresponding
+%%anchors
+%anchor_positions_reshaped = reshape(anchor_positions,[size(anchor_positions,1),1,size(anchor_positions,2)]);
+%physical_distances = repmat(shiftdim(physical_search_space,-1),[size(anchor_positions,1),1,1])-repmat(anchor_positions_reshaped,[1,size(physical_search_space,1),1]);
+%physical_distances = sqrt(sum(physical_distances.^2,3));
 
-%Construct a candidate search space over which to look for the tag
-[x,y,z] = meshgrid(0:.05:4,0:.05:4,-.65);%-2:.05:2);
-physical_search_space = [x(:),y(:),z(:)];
-
-%Pre-calculate distances from each point on search space to corresponding
-%anchors
-anchor_positions_reshaped = reshape(anchor_positions,[size(anchor_positions,1),1,size(anchor_positions,2)]);
-physical_distances = repmat(shiftdim(physical_search_space,-1),[size(anchor_positions,1),1,1])-repmat(anchor_positions_reshaped,[1,size(physical_search_space,1),1]);
-physical_distances = sqrt(sum(physical_distances.^2,3));
-
-cur_iq_data = squeeze(data_iq(:,:,1,:));
+%cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 
-fft_len = 2^ceil(log2(size(data_iq,4)));
-
-profile on
+%fft_len = 2^ceil(log2(size(data_iq,4)));
 
 %Loop through each timepoint
-tx_phasors = zeros(num_steps,num_harmonics_present);
-temp_to_tx = zeros(32,num_harmonics_present,size(data_iq,3));
-time_offset_maxs = [];
-square_ests = [];
+%tx_phasors = zeros(num_steps,num_harmonics_present);
+%temp_to_tx = zeros(32,num_harmonics_present,size(data_iq,3));
+%time_offset_maxs = [];
+%square_ests = [];
+file_offsets = zeros(4,1);
+cur_counters = zeros(4,1);
 first_time = true;
 time_step = 1;
 if(strcmp(res.system_setup,'diversity-cal'))
-	time_step = 5;
+	time_step = 3;
 end
-for cur_timepoint=start_timepoint:time_step:size(data_iq,3)
+cur_timepoint = start_timepoint-time_step;
+while min(file_offsets) >= 0
+	cur_timepoint = cur_timepoint + time_step;
+	while min(cur_counters) < cur_timepoint
+		for ii=1:num_anchors
+			if cur_counters(ii) < cur_timepoint
+				[cur_iq_data(ii,:,:), cur_counters(ii), file_offsets(ii)] = readHSCOMBData_single(['usrp_chan',num2str(ii-1),'.dat'],file_offsets(ii),samples_per_freq, restart_samples, num_steps);
+			end
+		end
+	end
+	if max(cur_counters) > cur_timepoint
+		continue;
+	end
 	tic
-	cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
+	%cur_iq_data = squeeze(data_iq(:,:,cur_timepoint,:));
+	if(use_image)
+		cur_iq_data = conj(cur_iq_data);
+	end
+	%keyboard
 
 	%Detect overflow issues
 	overflow_sum = sum(abs(cur_iq_data),3);
@@ -395,7 +517,7 @@ for cur_timepoint=start_timepoint:time_step:size(data_iq,3)
 	%%compensateMovement;
 	if(strcmp(res.operation,'calibration'))
 		processDirectSquare_bjt;%ONLY FOR CALIBRATION DATA
-		temp_to_tx(:,:,cur_timepoint) = squeeze(angle(temp_phasors))-squeeze(angle(tx_phasors(prf_anchor,:,:)));
+		%temp_to_tx(:,:,cur_timepoint) = squeeze(angle(temp_phasors))-squeeze(angle(tx_phasors(prf_anchor,:,:)));
 		%keyboard;
 		
 		%Final phasor calibration step calculates any remaining phase accrual errors between LO steps
@@ -420,4 +542,3 @@ for cur_timepoint=start_timepoint:time_step:size(data_iq,3)
 	%disp(['done with timepoint ', num2str(cur_timepoint)])
 end
 
-profile viewer

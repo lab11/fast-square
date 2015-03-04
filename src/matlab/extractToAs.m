@@ -27,7 +27,7 @@ for ii=1:num_timepoints
     %keyboard;
     
     %Shift everything to the right as far as the latest max peak
-    imp = circshift(imp,[0,-imp_max_idxs(1)]);
+    %imp = circshift(imp,[0,-imp_max_idxs(1)]);
     %last_peak = max(imp_max_idxs);
     %if(last_peak > 3*size(imp,2)/4)
     %    imp = circshift(imp,[0,-floor(size(imp,2)/4)]);
@@ -40,11 +40,7 @@ for ii=1:num_timepoints
 
     %Find peak of first impulse and see if we need to rotate
     for jj=1:num_antennas
-        gt_thresh = [0, find(abs(imp_norm(jj,:)) > thresh_in(jj))];
-	gt_thresh(1) = gt_thresh(end)-size(imp_norm,2);
-        gt_thresh_diff = diff(gt_thresh);
-        [~,gt_thresh_diff_max] = max(gt_thresh_diff);
-        imp_toas(jj,ii) = gt_thresh(gt_thresh_diff_max+1);
+	imp_toas(jj,ii) = impThresh(imp_norm(jj,:), thresh_in(jj));
     end
     %keyboard;
     

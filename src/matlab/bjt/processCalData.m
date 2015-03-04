@@ -46,4 +46,5 @@ end
 cd(cur_dir);
 cd(stationary_cal_path);
 analyzeHSCOMBData_bjt('system_setup','diversity','operation','localization','anchor',2);%,'prf_algorithm','fast');
+analyzeHSCOMBData_bjt('system_setup','diversity','operation','diversity_localization','anchor',2);%,'prf_algorithm','fast');
 analyzeHSCOMBData_bjt('system_setup','diversity','operation','toa_calibration','toa_cal_location',stationary_location);
