@@ -8,7 +8,7 @@
 #include <volk/volk.h>
 #include <cstdio>
 #include <string>
-#include <fstream>
+#include <sys/time.h>
 
 namespace gr {
 namespace fast_square {
@@ -21,7 +21,7 @@ stream_parser::sptr stream_parser::make(){
 stream_parser_impl::stream_parser_impl()
 	: block("stream_parser",
 			io_signature::make(4, 4, sizeof(gr_complex)),
-			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex))),
+			io_signature::make(0, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex))),
 	d_hsn(0), d_hsn_idx(0)
 {
 	d_output_per_seq = POW2_CEIL(NUM_STEPS*FFT_SIZE);
@@ -35,9 +35,20 @@ stream_parser_impl::stream_parser_impl()
 	const int alignment_multiple =
 		volk_get_alignment() / sizeof(float);
 	set_alignment(std::max(1,alignment_multiple));
+
+	//Open files to put timestamps in...
+	char filename[40];
+	for(int ii=0; ii < 4; ii++){
+		std::ofstream *temp_ofstream = new std::ofstream();
+		timestamp_files.push_back(temp_ofstream);
+		sprintf(filename,"timestamps_anchor%d.txt",ii);
+		timestamp_files[ii]->open(filename);
+	}
 }
 
 stream_parser_impl::~stream_parser_impl(){
+	for(int ii=0; ii < 4; ii++)
+		timestamp_files[ii]->close();
 }
 
 void stream_parser_impl::forecast(int noutput_items, gr_vector_int &ninput_items_required){
@@ -82,6 +93,14 @@ int stream_parser_impl::general_work(int noutput_items,
 				break;
 			} else {
 				uint32_t sequence_num = getSequenceNum(data_history[ii][SAMPLES_PER_SEQ-1]);
+				timeval cur_time;
+				char micro_cstr[7];
+				gettimeofday(&cur_time, NULL);
+				sprintf(micro_cstr,"%06d",(int)cur_time.tv_usec);
+				char *ct_out = ctime(&(cur_time.tv_sec));
+				ct_out[19] = 0;
+
+				*timestamp_files[ii] << sequence_num << " " << ct_out << "." << micro_cstr << std::endl;
 	
 				//TODO: Temporary code to allow for repeating log files
 				if(d_wait_for_restart){
@@ -130,7 +149,7 @@ int stream_parser_impl::general_work(int noutput_items,
 		//If snapshot_flag is set, it means we have a full snapshot and all data is aligned in data_history
 		if(snapshot_flag){
 			if(out_count < noutput_items){
-			for(int ii=0; ii < input_items.size(); ii++){
+			for(int ii=0; ii < output_items.size(); ii++){
 				for(int jj=0; jj < NUM_STEPS; jj++){
 					int cur_data_idx = SKIP_SAMPLES + SAMPLES_PER_FREQ*jj;
 					gr_complex *optr = ((gr_complex *)(output_items[ii])) + jj*FFT_SIZE + output_offset;
@@ -142,6 +161,8 @@ int stream_parser_impl::general_work(int noutput_items,
 						volk_32fc_conjugate_32fc(optr, optr, FFT_SIZE);
 
 				}
+			}
+			for(int ii=0; ii < input_items.size(); ii++){
 				data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ-1);
 			}
 			output_offset += d_output_per_seq;

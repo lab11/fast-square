@@ -207,9 +207,9 @@ if __name__ == '__main__':
         help="Set Default Frequency [default=%default]")
     parser.add_option("-g", "--param-gain", dest="param_gain", type="eng_float", default=eng_notation.num_to_str(70),
         help="Set Default Gain [default=%default]")
-    parser.add_option("-a", "--address", dest="address", type="string", default="serial=9R24X1U1, fpga=usrp1_bb_comb_2mhz.rbf",
+    parser.add_option("-a", "--address", dest="address", type="string", default="serial=9R24X1U1, fpga=usrp1_bb_comb_diversity.rbf",
         help="Set IP Address [default=%default]")
-    parser.add_option("--address2", dest="address2", type="string", default="serial=7R24X9U1, fpga=usrp1_bb_comb_2mhz.rbf",
+    parser.add_option("--address2", dest="address2", type="string", default="serial=7R24X9U1, fpga=usrp1_bb_comb_diversity.rbf",
         help="Set IP Address [default=%default]")
     parser.add_option("--tofile", action="store_true", default=False,
         help="Push channel 2 data to file")

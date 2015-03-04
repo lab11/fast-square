@@ -27,7 +27,8 @@ module fast_square_bb_comb(
 	input wire signed [15:0] i_in,
 	input wire signed [15:0] q_in,
 	output wire [15:0] i_out,
-	output wire [15:0] q_out
+	output wire [15:0] q_out,
+	output reg [2:0] mod_counter
 );
 
 //This signal processing chain consists of two serial COMB filters followed by a decimate-by-17 block
@@ -53,12 +54,12 @@ comb_filter(
 
 reg [15:0] reset_counter;
 reg restart_data;
+reg [31:0] num_resets;
 
 reg [5:0] data_out_counter;
-assign data_out_strobe = (data_out_counter == 5'd32);
+assign data_out_strobe = (data_out_counter == 6'd32);
 integer i;
 
-reg [31:0] num_resets;
 reg just_reset;
 
 always @(posedge clock) begin
@@ -67,16 +68,22 @@ always @(posedge clock) begin
 		reset_counter <= #1 0;
 		data_out_counter <= #1 0;
 		just_reset <= #1 1'b1;
-		if(ext_reset)
+		if(ext_reset) begin
 			num_resets <= #1 0;
+			mod_counter <= #1 0;
+		end
 	end else begin
 		if(data_out_strobe) begin
 			if(just_reset) begin
 				num_resets <= #1 num_resets + 1;
+				if(mod_counter < 3'd4)
+					mod_counter <= #1 mod_counter + 1;
+				else
+					mod_counter <= #1 0;
 				just_reset <= #1 1'b0;
 			end
 			data_out_counter <= #1 0;
-			if(reset_counter <= 200) begin
+			if(reset_counter <= 100) begin
 				reset_counter <= #1 reset_counter + 1;
 			end else begin
 				restart_data <= #1 1'b0;
