@@ -33,7 +33,7 @@ for ii=1:length(anchor_direct_cal_paths)
 			successful_load = true;
 		catch
 			successful_load = false;
-			jj = jj + 5;
+			jj = jj + 3;
 		end
 	end
 

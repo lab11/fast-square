@@ -32,6 +32,7 @@ RECORD_TICKS = 35000;
 total_ticks = RECORD_TICKS + 1 + 642 + 31;
 ticks_per_sequence = 4096+total_ticks*32;
 
+sub_folders = true;
 
 NUM_HIST = 10;
 INTERP = 64;
@@ -97,6 +98,7 @@ lo_lengths = lo_lengths/0.85;
 %    4.108, 0.347, 1.543;...
 %    0.273, 0.343, 1.56 ...
 %];
+%%Positions with all antennas taken into account (attached directly to anchors)
 anchor_positions = zeros(4,3,3);
 anchor_positions(1,:,:) = [...
 	2.425, 3.910, 3.008;...
@@ -107,7 +109,7 @@ anchor_positions(2,:,:) = [
 	2.125, 0.000, 2.559;...
 	2.125, 0.000, 2.454;...
 	2.040, 0.000, 2.507 ...
-];
+] + repmat([-0.025, 0.232, -0.067],[3,1]);
 anchor_positions(3,:,:) = [
 	4.219, 0.486, 1.635;...
 	4.157, 0.404, 1.649;...
@@ -118,6 +120,28 @@ anchor_positions(4,:,:) = [
 	0.424, 0.441, 1.649;...
 	0.374, 0.441, 1.738 ...
 ]-.113;
+%%Positions with all antennas taken into account (extended away from anchors)
+%anchor_positions = zeros(4,3,3);
+%anchor_positions(1,:,:) = [...
+%	2.969, 3.927, 2.969;...
+%	2.129, 3.289, 2.861;...
+%	1.744, 3.927, 2.819 ...
+%];
+%anchor_positions(2,:,:) = [
+%	2.535, 0.000, 2.775;...
+%	2.519, 0.000, 2.036;...
+%	1.427, 0.000, 2.494 ...
+%];
+%anchor_positions(3,:,:) = [
+%	4.312, 0.749, 1.229;...
+%	3.488, 0.316, 1.510;...
+%	4.085, 0.316, 1.880 ...
+%];
+%anchor_positions(4,:,:) = [
+%	0.000, 0.675, 1.230;...
+%	0.867, 0.316, 1.515;...
+%	0.261, 0.316, 1.888 ...
+%];
 num_anchors = size(anchor_positions,1);
 
 %Check to see if we're performing toa calibration (which comes after running an entire dataset)
@@ -167,16 +191,25 @@ elseif(strcmp(res.operation,'diversity_localization'))
 	diversity_choices = [];
 	imp_toas_agg = [];
 	est_positions = zeros(3,1,3);
+	cur_folder = -1;
+	if(sub_folders)
+		last_step_idx = 18811; %TODO: Fix this...
+	end
 	for ii=start_timepoint:3:last_step_idx
+		disp('reading')
 		%All five consecutive timesteps are necessary to calculate position
 		try
 			success = false;
 			for jj=1:3
+				if(sub_folders)
+					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
+				end
 				load(['timestep',num2str(ii+jj-1)]);
 			end
 			success = true;
 		catch
 		end 
+		disp('done reading')
 
 		if(success)
 			imp_agg = zeros([size(imp),3]);
@@ -186,6 +219,9 @@ elseif(strcmp(res.operation,'diversity_localization'))
 			div_metric = zeros(4,3);
 			%Start by refactoring ToA estimates by using 20% of the max amplitude instead of 20% of each snapshot
 			for jj=1:3
+				if(sub_folders)
+					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
+				end
 				load(['timestep',num2str(ii+jj-1)]);
 				imp_agg(:,:,jj) = imp;
 			end
@@ -198,10 +234,16 @@ elseif(strcmp(res.operation,'diversity_localization'))
 						imp_toa_div_idxs(kk) = cand_toa;
 					end
 				end
+				if(sub_folders)
+					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
+				end
 				save(['timestep',num2str(ii+jj-1)],'-append','imp_toa_div_idxs');
 			end
 
 			for jj=1:3
+				if(sub_folders)
+					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
+				end
 				load(['timestep',num2str(ii+jj-1)]);
 				
 				%Compensate for drift due to time between datasets
@@ -250,6 +292,9 @@ elseif(strcmp(res.operation,'diversity_localization'))
 			%%Diversity choice option #1: Highest div metric
 			%[~,diversity_choice] = max(div_metric2,[],2);
 
+			if(sub_folders)
+				cur_folder = goToSubFolder(cur_folder, ii);
+			end
 			save(['timestep',num2str(ii)],'-append','imp_toas_div','diversity_choice');
 			
 		end
@@ -330,9 +375,17 @@ elseif(strcmp(res.operation,'post_localization'))
 	end
 	est_positions = zeros(length(timestep_files),3);
 	toa_hist = zeros(length(timestep_files),4);
+	toa_errors_hist = zeros(length(timestep_files),12);
 	diversity_choices = zeros(length(timestep_files),4);
+	cur_folder = -1;
+	if(sub_folders)
+		last_step_idx = 18811; %TODO: Fix this...
+	end
 	for ii=start_timepoint:timestep_step:last_step_idx
 		try
+			if(sub_folders)
+				cur_folder = goToSubFolder(cur_folder, ii);
+			end
 			load(['timestep',num2str(ii)]);
 			tic
 			if(strcmp(res.system_setup,'diversity'))
@@ -342,50 +395,64 @@ elseif(strcmp(res.operation,'post_localization'))
 			end
 			imp_toas = imp_toas - measured_toa_errors.';
 			imp_toas = modImps(imp_toas,prf_est);
-			%Iteratively minimize the MSE between the position estimate and all TDoA
-			%measurements
-			est_position = [0,0,0];
-			position_step = 0.01;
-			poss_steps = PermsRep([-position_step, 0, position_step], 3);
-			new_est = true;
-			best_error = Inf;
-			while new_est
-			    cur_best_error = best_error;
-			    cur_best_error_idx = 1;
-			    for jj=1:size(poss_steps,1)
-			        cand_position = est_position + poss_steps(jj,:);
-
-				anchor_positions_div = zeros(num_anchors,3);
-				for kk=1:num_anchors
-					anchor_positions_div(kk,:) = anchor_positions(kk,diversity_choice(kk),:);
-				end
-			        cand_error = calculatePositionError(cand_position, anchor_positions_div, imp_toas, true);
-			        
-			        if cand_error < cur_best_error
-			            cur_best_error = cand_error;
-			            cur_best_error_idx = jj;
-			        end
-			    end
-			    
-			    if cur_best_error < best_error
-			        best_error = cur_best_error;
-			        est_position = est_position + poss_steps(cur_best_error_idx,:);
-			        new_est = true;
-			    else
-			        new_est = false;
-			    end
-			    
-			    if(sqrt(sum(est_position.^2)) > 10)
-			        est_position = [0, 0, 0];
-			        break;
-			    end
+			anchor_pos = reshape(anchor_positions,[size(anchor_positions,1)*size(anchor_positions,2),size(anchor_positions,3)]);
+			[pos_temp, temp_toa_errors] = runNewtonLocalization(anchor_pos, imp_toas_div, measured_toa_errors, prf_est);
+			toa_errors_hist(ii,:) = temp_toa_errors(:);
+			temp_toa_errors = reshape(temp_toa_errors,[size(imp_toas_div)]);
+			[~,diversity_choice] = min(temp_toa_errors,[],2);
+			%keyboard;
+			diversity_anchor_pos = zeros(num_anchors,3);
+			imp_toas_choice = zeros(num_anchors,1);
+			for jj=1:num_anchors
+				diversity_anchor_pos(jj,:) = anchor_positions(jj,diversity_choice(jj),:);
+				imp_toas_choice(jj) = imp_toas_div(jj,diversity_choice(jj));
 			end
+			[est_position, toa_errors] = runNewtonLocalization(diversity_anchor_pos, imp_toas_choice, measured_toa_errors, prf_est);
+
+			%%Iteratively minimize the MSE between the position estimate and all TDoA
+			%%measurements
+			%est_position = [0,0,0];
+			%position_step = 0.01;
+			%poss_steps = PermsRep([-position_step, 0, position_step], 3);
+			%new_est = true;
+			%best_error = Inf;
+			%while new_est
+			%    cur_best_error = best_error;
+			%    cur_best_error_idx = 1;
+			%    for jj=1:size(poss_steps,1)
+			%        cand_position = est_position + poss_steps(jj,:);
+
+			%	anchor_positions_div = zeros(num_anchors,3);
+			%	for kk=1:num_anchors
+			%		anchor_positions_div(kk,:) = anchor_positions(kk,diversity_choice(kk),:);
+			%	end
+			%        cand_error = calculatePositionError(cand_position, anchor_positions_div, imp_toas, true);
+			%        
+			%        if cand_error < cur_best_error
+			%            cur_best_error = cand_error;
+			%            cur_best_error_idx = jj;
+			%        end
+			%    end
+			%    
+			%    if cur_best_error < best_error
+			%        best_error = cur_best_error;
+			%        est_position = est_position + poss_steps(cur_best_error_idx,:);
+			%        new_est = true;
+			%    else
+			%        new_est = false;
+			%    end
+			%    
+			%    if(sqrt(sum(est_position.^2)) > 10)
+			%        est_position = [0, 0, 0];
+			%        break;
+			%    end
+			%end
 			if(sum(abs(est_position)) > 0)
 				est_positions(ii,:) = est_position;
 				toa_hist(ii,:) = imp_toas;
 				good_ests(ii) = ii;
 				diversity_choices(ii,:) = diversity_choice;
-				save(['timestep',num2str(ii)],'-append','est_position');
+				%save(['timestep',num2str(ii)],'-append','est_position');
 			end
 			ii
 			toc
@@ -394,6 +461,7 @@ elseif(strcmp(res.operation,'post_localization'))
 		catch
 		end
 	end
+	%keyboard;
 	toa_hist = toa_hist(est_positions(:,1) > 0,:);
 	good_ests = good_ests(est_positions(:,1) > 0);
 	diversity_choices = diversity_choices(est_positions(:,1) > 0,:);
@@ -450,14 +518,19 @@ first_time = true;
 time_step = 1;
 if(strcmp(res.system_setup,'diversity-cal'))
 	time_step = 3;
+	cur_timepoint = start_timepoint-time_step-1;
+else
+	cur_timepoint = start_timepoint-time_step;
 end
-cur_timepoint = start_timepoint-time_step;
 while min(file_offsets) >= 0
 	cur_timepoint = cur_timepoint + time_step;
 	while min(cur_counters) < cur_timepoint
 		for ii=1:num_anchors
 			if cur_counters(ii) < cur_timepoint
 				[cur_iq_data(ii,:,:), cur_counters(ii), file_offsets(ii)] = readHSCOMBData_single(['usrp_chan',num2str(ii-1),'.dat'],file_offsets(ii),samples_per_freq, restart_samples, num_steps);
+				if(file_offsets(ii) == -1)
+					return;
+				end
 			end
 		end
 	end

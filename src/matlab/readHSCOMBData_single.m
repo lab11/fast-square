@@ -10,6 +10,12 @@ whole_snapshot = false;
 data_iq = [];
 while whole_snapshot == false
 	new_data = fread(fid,samples_per_freq*num_steps*2,'float');
+	if(feof(fid))
+		restart_counter = -1;
+		ret_data = -1;
+		new_offset = -1;
+		break;
+	end
 	new_data = round(new_data*32767);
 	new_data = new_data(1:2:end) + 1i*new_data(2:2:end);
 	data_iq = [data_iq; new_data];
@@ -17,6 +23,7 @@ while whole_snapshot == false
 	%Find marked restarts in data stream
 	restarts = find(data_iq == -32768-32768*1i);
 	res_diff = diff(restarts);
+
 	
 	%Subtract one to account for restart counter which comes before restart sequence
 	restart_idx = restarts(find(res_diff > num_steps*samples_per_freq-skip_samples))-restart_samples;
