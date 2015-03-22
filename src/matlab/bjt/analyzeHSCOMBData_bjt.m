@@ -17,6 +17,7 @@ checkSystemSetup = @(x) any(validatestring(x,validSystemSetups));
 defaultAnchor = 1;
 defaultIFFreq = 990e6;
 defaultCalLocation = [0 0 0];
+defaultToaCalName = 'measured_toa_errors.mat';
 
 addParamValue(p,'operation', defaultOperation, checkOperation);
 addParamValue(p,'prf_algorithm',defaultPRFAlgorithm, checkPRFAlgorithm);
@@ -24,6 +25,7 @@ addParamValue(p,'system_setup',defaultSystemSetup, checkSystemSetup);
 addParamValue(p,'anchor', defaultAnchor, @isnumeric);
 addParamValue(p,'if_freq', defaultIFFreq, @isnumeric);
 addParamValue(p,'toa_cal_location', defaultCalLocation, @ismatrix);
+addParamValue(p,'toa_cal_name', defaultToaCalName, @ischar);
 
 parse(p,varargin{:});
 res = p.Results;
@@ -32,7 +34,7 @@ RECORD_TICKS = 35000;
 total_ticks = RECORD_TICKS + 1 + 642 + 31;
 ticks_per_sequence = 4096+total_ticks*32;
 
-sub_folders = true;
+sub_folders = false;
 
 NUM_HIST = 10;
 INTERP = 64;
@@ -105,11 +107,17 @@ anchor_positions(1,:,:) = [...
 	2.400, 3.808, 3.008;...
 	2.334, 3.855, 2.945 ...
 ];
+%Rough paper coords
+%anchor_positions(2,:,:) = [
+%	2.125, 0.000, 2.559;...
+%	2.125, 0.000, 2.454;...
+%	2.040, 0.000, 2.507 ...
+%] + repmat([-0.025, 0.232, -0.067],[3,1]);
 anchor_positions(2,:,:) = [
-	2.125, 0.000, 2.559;...
-	2.125, 0.000, 2.454;...
-	2.040, 0.000, 2.507 ...
-] + repmat([-0.025, 0.232, -0.067],[3,1]);
+	2.136, 0.250, 2.479;...
+	2.124, 0.247, 2.384;...
+	2.044, 0.239, 2.439 ...
+];
 anchor_positions(3,:,:) = [
 	4.219, 0.486, 1.635;...
 	4.157, 0.404, 1.649;...
@@ -175,9 +183,8 @@ if(strcmp(res.operation,'toa_calibration'))
 		%measured_toa_errors(ii,:) = calculateAnchorErrors(anchor_positions, res.toa_cal_location, measured_toas);
 		%measured_toa_errors(ii,:) = modImps(measured_toa_errors(ii,:),prf_est);
 	end
-	keyboard;
 	measured_toa_errors = median(measured_toa_errors,1);
-	save('../measured_toa_errors', 'measured_toa_errors');
+	save(res.toa_cal_name, 'measured_toa_errors');
 	return;
 elseif(strcmp(res.operation,'diversity_localization'))
 	timestep_files = dir('timestep*');
@@ -196,6 +203,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 		last_step_idx = 18811; %TODO: Fix this...
 	end
 	for ii=start_timepoint:3:last_step_idx
+		tic;
 		disp('reading')
 		%All five consecutive timesteps are necessary to calculate position
 		try
@@ -355,6 +363,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 		%	imp_toas_agg = [imp_toas_agg,imp_toas];
 		%end
 		ii
+		toc;
 	end
 	return;
 elseif(strcmp(res.operation,'post_localization'))
@@ -375,6 +384,7 @@ elseif(strcmp(res.operation,'post_localization'))
 	end
 	est_positions = zeros(length(timestep_files),3);
 	toa_hist = zeros(length(timestep_files),4);
+	good_ests = zeros(length(timestep_files),1);
 	toa_errors_hist = zeros(length(timestep_files),12);
 	diversity_choices = zeros(length(timestep_files),4);
 	cur_folder = -1;
@@ -383,6 +393,7 @@ elseif(strcmp(res.operation,'post_localization'))
 	end
 	for ii=start_timepoint:timestep_step:last_step_idx
 		try
+			tic;
 			if(sub_folders)
 				cur_folder = goToSubFolder(cur_folder, ii);
 			end

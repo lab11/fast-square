@@ -29,6 +29,9 @@ while whole_snapshot == false
 	restart_idx = restarts(find(res_diff > num_steps*samples_per_freq-skip_samples))-restart_samples;
 	next_restart_idx = restarts(find(res_diff > num_steps*samples_per_freq-skip_samples)+1)-1;
 	if(length(restart_idx) > 0)
+		restart_idx = restart_idx(1);
+		next_restart_idx = next_restart_idx(1);
+
 		whole_snapshot = true;
 		new_offset = file_offset + next_restart_idx*4*2 + 4*2;
 
