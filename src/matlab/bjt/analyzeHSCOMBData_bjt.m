@@ -613,11 +613,12 @@ while min(file_offsets) >= 0
 
 
 		save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'phase_accrual');%, 'time_offset_max', 'est_position', 'imp_toas', 'imp');%, 'est_likelihood', 'time_offset_max');
+		keyboard;
 	else
 		harmonicLocalization_r7;
 		imp_toas = imp_toas*2;
 		toc
-		%keyboard;
+		keyboard;
 		save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'imp_toas', 'imp_toa_idxs', 'imp');%, 'est_likelihood', 'time_offset_max');
 	end
 

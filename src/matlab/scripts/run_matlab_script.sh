@@ -1,3 +1,3 @@
 #!/bin/bash
 
-matlab -nojvm -nodisplay -nosplash -r "$1"
+matlab -nodesktop -nosplash -r "$1"
