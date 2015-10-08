@@ -148,6 +148,13 @@ class uhd_fft(gr.top_block):
 		self.connect((self.source2, 0), self.logfile2)
 		self.logfile3 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan3.dat")
 		self.connect((self.source2, 1), self.logfile3)
+
+		#Also connect to the stream parser so we get timestamps as well!
+		self.parser = fast_square.stream_parser()
+		self.connect((self.source, 0), (self.parser, 0))
+		self.connect((self.source, 1), (self.parser, 1))
+		self.connect((self.source2, 0), (self.parser, 2))
+		self.connect((self.source2, 1), (self.parser, 3))
 	else:
 		self.parser = fast_square.stream_parser()
 		if self.fromfile == True:

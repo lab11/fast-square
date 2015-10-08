@@ -187,7 +187,11 @@ if(strcmp(res.operation,'toa_calibration'))
 	save(res.toa_cal_name, 'measured_toa_errors');
 	return;
 elseif(strcmp(res.operation,'diversity_localization'))
-	timestep_files = dir('timestep*');
+	%Get out of the directory with so many files because matlab hates that...
+	cur_dir = pwd;
+	cd ../
+	
+	timestep_files = dir([cur_dir,'/timestep*']);
 	last_step_idx = 0;
 	for ii=1:length(timestep_files)
 		cand_idx = str2num(timestep_files(ii).name(9:end-4));
@@ -212,7 +216,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 				if(sub_folders)
 					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
 				end
-				load(['timestep',num2str(ii+jj-1)]);
+				load([cur_dir,'/timestep',num2str(ii+jj-1),'.mat']);
 			end
 			success = true;
 		catch
@@ -230,7 +234,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 				if(sub_folders)
 					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
 				end
-				load(['timestep',num2str(ii+jj-1)]);
+				load([cur_dir,'/timestep',num2str(ii+jj-1)]);
 				imp_agg(:,:,jj) = imp;
 			end
 			imp_maxs = max(squeeze(max(abs(imp_agg),[],2)),[],2);
@@ -245,14 +249,14 @@ elseif(strcmp(res.operation,'diversity_localization'))
 				if(sub_folders)
 					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
 				end
-				save(['timestep',num2str(ii+jj-1)],'-append','imp_toa_div_idxs');
+				save([cur_dir,'/timestep',num2str(ii+jj-1)],'-append','imp_toa_div_idxs');
 			end
 
 			for jj=1:3
 				if(sub_folders)
 					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
 				end
-				load(['timestep',num2str(ii+jj-1)]);
+				load([cur_dir,'/timestep',num2str(ii+jj-1)]);
 				
 				%Compensate for drift due to time between datasets
 				imp_toa_div_idxs = imp_toa_div_idxs - round(drift_time_in_samples);
@@ -303,7 +307,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 			if(sub_folders)
 				cur_folder = goToSubFolder(cur_folder, ii);
 			end
-			save(['timestep',num2str(ii)],'-append','imp_toas_div','diversity_choice');
+			save([cur_dir,'/timestep',num2str(ii)],'-append','imp_toas_div','diversity_choice');
 			
 		end
 		%%If we have all five timepoints, start with 'best antenna' classification
@@ -369,8 +373,12 @@ elseif(strcmp(res.operation,'diversity_localization'))
 elseif(strcmp(res.operation,'post_localization'))
 	load('../measured_toa_errors');
 
+	%Get out of the directory with so many files because matlab hates that...
+	cur_dir = pwd;
+	cd ../
+	
 	%Loop through all post-processing data
-	timestep_files = dir('timestep*');
+	timestep_files = dir([cur_dir,'/timestep*']);
 	last_step_idx = 0;
 	for ii=1:length(timestep_files)
 		cand_idx = str2num(timestep_files(ii).name(9:end-4));
@@ -397,7 +405,7 @@ elseif(strcmp(res.operation,'post_localization'))
 			if(sub_folders)
 				cur_folder = goToSubFolder(cur_folder, ii);
 			end
-			load(['timestep',num2str(ii)]);
+			load([cur_dir,'/timestep',num2str(ii)]);
 			tic
 			if(strcmp(res.system_setup,'diversity'))
 				for jj=1:length(diversity_choice)
@@ -477,7 +485,7 @@ elseif(strcmp(res.operation,'post_localization'))
 	good_ests = good_ests(est_positions(:,1) > 0);
 	diversity_choices = diversity_choices(est_positions(:,1) > 0,:);
 	est_positions = est_positions(est_positions(:,1) > 0,:);
-	save est_positions est_positions toa_hist good_ests diversity_choices;
+	save([cur_dir,'/est_positions'],'est_positions','toa_hist','good_ests','diversity_choices');
 	return;
 elseif(strcmp(res.operation,'reset_cal_data'))
 	tx_phasors = zeros(num_anchors,num_steps,num_harmonics_present);
@@ -618,7 +626,9 @@ while min(file_offsets) >= 0
 		harmonicLocalization_r7;
 		imp_toas = imp_toas*2;
 		toc
-		keyboard;
+		%if cur_timepoint == 211
+		%	keyboard;
+		%end
 		save(['timestep',num2str(cur_timepoint)], 'prf_est', 'square_phasors', 'tx_phasors', 'imp_toas', 'imp_toa_idxs', 'imp');%, 'est_likelihood', 'time_offset_max');
 	end
 
