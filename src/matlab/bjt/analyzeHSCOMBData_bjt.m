@@ -299,7 +299,17 @@ elseif(strcmp(res.operation,'diversity_localization'))
 			temp_toas_div = imp_toas_div - repmat(imp_toas_div(:,1),[1,size(imp_toas_div,2)]);
 			temp_toas_div(temp_toas_div > half_prf) = temp_toas_div(temp_toas_div > half_prf) - prf_est;
 			temp_toas_div(temp_toas_div < -half_prf) = temp_toas_div(temp_toas_div < -half_prf) + prf_est;
-			[~,diversity_choice] = min(temp_toas_div,[],2);
+
+			%Take min, but if it's really far off from the rest, take the next (likely interference-induced or poor overall SNR)
+			[temp_toas_sorted,diversity_sort] = sort(temp_toas_div,2);
+			diversity_choice = zeros(num_anchors,1);
+			for jj=1:num_anchors
+				diversity_choice(jj) = diversity_sort(jj,1);
+				if(temp_toas_sorted(jj,2) > temp_toas_sorted(jj,1) + 1.0)
+					diversity_choice(jj) = diversity_sort(jj,2);
+				end
+			end
+			%[~,diversity_choice] = min(temp_toas_div,[],2);
 
 			%%Diversity choice option #1: Highest div metric
 			%[~,diversity_choice] = max(div_metric2,[],2);
@@ -369,6 +379,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 		ii
 		toc;
 	end
+	cd(cur_dir)
 	return;
 elseif(strcmp(res.operation,'post_localization'))
 	load('../measured_toa_errors');
@@ -418,7 +429,7 @@ elseif(strcmp(res.operation,'post_localization'))
 			[pos_temp, temp_toa_errors] = runNewtonLocalization(anchor_pos, imp_toas_div, measured_toa_errors, prf_est);
 			toa_errors_hist(ii,:) = temp_toa_errors(:);
 			temp_toa_errors = reshape(temp_toa_errors,[size(imp_toas_div)]);
-			[~,diversity_choice] = min(temp_toa_errors,[],2);
+			[~,diversity_choice] = min(abs(temp_toa_errors),[],2);
 			%keyboard;
 			diversity_anchor_pos = zeros(num_anchors,3);
 			imp_toas_choice = zeros(num_anchors,1);
@@ -427,6 +438,7 @@ elseif(strcmp(res.operation,'post_localization'))
 				imp_toas_choice(jj) = imp_toas_div(jj,diversity_choice(jj));
 			end
 			[est_position, toa_errors] = runNewtonLocalization(diversity_anchor_pos, imp_toas_choice, measured_toa_errors, prf_est);
+			%keyboard;
 
 			%%Iteratively minimize the MSE between the position estimate and all TDoA
 			%%measurements
@@ -486,6 +498,7 @@ elseif(strcmp(res.operation,'post_localization'))
 	diversity_choices = diversity_choices(est_positions(:,1) > 0,:);
 	est_positions = est_positions(est_positions(:,1) > 0,:);
 	save([cur_dir,'/est_positions'],'est_positions','toa_hist','good_ests','diversity_choices');
+	cd(cur_dir)
 	return;
 elseif(strcmp(res.operation,'reset_cal_data'))
 	tx_phasors = zeros(num_anchors,num_steps,num_harmonics_present);
