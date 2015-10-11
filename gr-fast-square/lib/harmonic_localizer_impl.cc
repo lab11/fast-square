@@ -52,17 +52,21 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	message_port_register_out(pmt::mp("frame_out"));
 
 	//Populate antenna array
-	float ax[4] = {2.405, 2.105, 4.108, 0.273};
-	float ay[4] = {3.815, 0.034, 0.347, 0.343};
-	float az[4] = {2.992, 2.494, 1.543, 1.560};
+	//Open anchor position file for reading
+	FILE *source = fopen("anchor_positions.dat", "r");
 	d_anchor_pos.clear();
-	std::vector<float> cur_anchor_pos(3);
-	for(int ii=0; ii < 4; ii++){
-		cur_anchor_pos[0] = ax[ii];
-		cur_anchor_pos[1] = ay[ii];
-		cur_anchor_pos[2] = az[ii];
-		d_anchor_pos.push_back(cur_anchor_pos);
+	std::vector<std::vector<float> > anchor_antennas(NUM_ANTENNAS_PER_ANCHOR);
+	std::vector<float> cur_antenna_pos(3);
+	for(int ii=0; ii < NUM_ANCHORS; ii++){
+		for(int jj=0; jj < NUM_ANTENNAS_PER_ANCHOR; jj++){
+			fread((void*)(&cur_antenna_pos[0]), 3*sizeof(real), 1, source);
+			anchor_antennas[jj] = cur_anchor_pos;
+		}
+		d_anchor_pos.push_back(anchor_antennas);
 	}
+	//Close file
+	fclose(source);
+
 	float poss_steps[81] = {-0.0100, -0.0100, -0.0100, -0.0100, -0.0100, 0, -0.0100, -0.0100, 0.0100, -0.0100, 0, -0.0100, -0.0100, 0, 0, -0.0100, 0, 0.0100, -0.0100, 0.0100, -0.0100, -0.0100, 0.0100, 0, -0.0100, 0.0100, 0.0100, 0, -0.0100, -0.0100, 0, -0.0100, 0, 0, -0.0100, 0.0100, 0, 0, -0.0100, 0, 0, 0, 0, 0, 0.0100, 0, 0.0100, -0.0100, 0, 0.0100, 0, 0, 0.0100, 0.0100, 0.0100, -0.0100, -0.0100, 0.0100, -0.0100, 0, 0.0100, -0.0100, 0.0100, 0.0100, 0, -0.0100, 0.0100, 0, 0, 0.0100, 0, 0.0100, 0.0100, 0.0100, -0.0100, 0.0100, 0.0100, 0, 0.0100, 0.0100, 0.0100};
 	d_poss_steps.clear();
 	std::vector<float> cur_poss_steps(3);

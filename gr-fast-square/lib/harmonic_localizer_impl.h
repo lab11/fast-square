@@ -19,7 +19,7 @@ private:
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<double> d_harmonic_freqs;
 	std::vector<std::vector<float> > d_poss_steps;
-	std::vector<std::vector<float> > d_anchor_pos;
+	std::vector<std::vector<std::vector<float> > > d_anchor_pos;
 	std::vector<float> d_harmonic_freqs_f;
 	std::vector<float> d_time_delay_in_samples;
 	std::vector<float> d_fft_window;
