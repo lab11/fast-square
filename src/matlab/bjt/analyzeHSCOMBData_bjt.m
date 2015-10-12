@@ -18,6 +18,7 @@ defaultAnchor = 1;
 defaultIFFreq = 990e6;
 defaultCalLocation = [0 0 0];
 defaultToaCalName = 'measured_toa_errors.mat';
+defaultIgnoreSteps = [];
 
 addParamValue(p,'operation', defaultOperation, checkOperation);
 addParamValue(p,'prf_algorithm',defaultPRFAlgorithm, checkPRFAlgorithm);
@@ -26,6 +27,7 @@ addParamValue(p,'anchor', defaultAnchor, @isnumeric);
 addParamValue(p,'if_freq', defaultIFFreq, @isnumeric);
 addParamValue(p,'toa_cal_location', defaultCalLocation, @ismatrix);
 addParamValue(p,'toa_cal_name', defaultToaCalName, @ischar);
+addParamValue(p,'ignore_freq_steps', defaultIgnoreSteps, @ismatrix);
 
 parse(p,varargin{:});
 res = p.Results;
@@ -574,7 +576,6 @@ while min(file_offsets) >= 0
 	if(use_image)
 		cur_iq_data = conj(cur_iq_data);
 	end
-	%keyboard
 
 	%Detect overflow issues
 	overflow_sum = sum(abs(cur_iq_data),3);
@@ -582,6 +583,10 @@ while min(file_offsets) >= 0
 		continue;
 	end
 	
+	%Remove any iq data contaminated by narrowband inteference
+	cur_iq_data(:,res.ignore_freq_steps,:) = 0;
+	%keyboard
+
 	if first_time
 		load ../tx_phasors;
 	end
