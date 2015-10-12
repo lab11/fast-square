@@ -14,6 +14,38 @@ tx_phasors_reshaped = permute(tx_phasors_reshaped,[1,3,2]);
 tx_phasors_reshaped = reshape(tx_phasors_reshaped,[size(tx_phasors_reshaped,1),size(tx_phasors_reshaped,2)*size(tx_phasors_reshaped,3)]);
 tx_phasors_reshaped = [tx_phasors_reshaped(:,133:end),tx_phasors_reshaped(:,1:132)];
 
+%Identify pure-zero phasors (they should be from zeroing due to narrowband cancellation)
+N = size(tx_phasors_reshaped,2);
+for hl_ii = 1:size(tx_phasors_reshaped,1)
+	for hl_jj = 1:2
+		if(hl_jj == 1)
+			x = real(tx_phasors_reshaped(hl_ii,:));
+		else
+			x = imag(tx_phasors_reshaped(hl_ii,:));
+		end
+
+		OMEGA = find(x > 0);
+		OMEGA_NOT = find(x == 0);
+		N = length(x);
+		K = sum(x > 0);
+		A = randn(K,N);
+		A = orth(A')';
+		y = A*x;
+		x0 = A'*y;
+		xp = l1eq_pd(x0, A, [], y, 1e-3);
+
+		if(hl_jj == 1)
+			x_real = xp;
+		else
+			x_imag = xp;
+		end
+	end
+	new_cir = x_real + 1i*x_imag;
+	new_fr = fft(new_cir);
+	tx_phasors_reshaped(hl_ii,OMEGA_NOT) = new_fr(OMEGA_NOT);
+	keyboard;
+end
+
 %Calculate ToAs and the corresponding impulse response
 [imp_toas, imp] = extractToAs(square_phasors_reshaped, tx_phasors_reshaped, [0.2, 0.2, 0.2, 0.2]);
 
