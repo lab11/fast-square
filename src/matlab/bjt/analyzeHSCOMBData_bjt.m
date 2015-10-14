@@ -18,6 +18,7 @@ defaultAnchor = 1;
 defaultIFFreq = 990e6;
 defaultCalLocation = [0 0 0];
 defaultToaCalName = 'measured_toa_errors.mat';
+defaultModIndex = 3;
 defaultIgnoreSteps = [];
 
 addParamValue(p,'operation', defaultOperation, checkOperation);
@@ -28,6 +29,7 @@ addParamValue(p,'if_freq', defaultIFFreq, @isnumeric);
 addParamValue(p,'toa_cal_location', defaultCalLocation, @ismatrix);
 addParamValue(p,'toa_cal_name', defaultToaCalName, @ischar);
 addParamValue(p,'ignore_freq_steps', defaultIgnoreSteps, @ismatrix);
+addParamValue(p,'mod_index', defaultModIndex, @isnumeric);
 
 parse(p,varargin{:});
 res = p.Results;
@@ -103,8 +105,10 @@ lo_lengths = lo_lengths/0.85;
 %    0.273, 0.343, 1.56 ...
 %];
 %%Positions with all antennas taken into account (attached directly to anchors)
-anchor_positions = zeros(4,3,3);
+anchor_positions = zeros(4,res.mod_index,3);
 anchor_positions(1,:,:) = [...
+	2.425, 3.910, 3.008;...
+	2.425, 3.910, 3.008;...
 	2.425, 3.910, 3.008;...
 	2.400, 3.808, 3.008;...
 	2.334, 3.855, 2.945 ...
@@ -118,9 +122,13 @@ anchor_positions(1,:,:) = [...
 anchor_positions(2,:,:) = [
 	2.136, 0.250, 2.479;...
 	2.124, 0.247, 2.384;...
+	2.044, 0.239, 2.439;...
+	2.044, 0.239, 2.439;...
 	2.044, 0.239, 2.439 ...
 ];
 anchor_positions(3,:,:) = [
+	4.219, 0.486, 1.635;...
+	4.219, 0.486, 1.635;...
 	4.219, 0.486, 1.635;...
 	4.157, 0.404, 1.649;...
 	4.198, 0.458, 1.728 ...
@@ -128,6 +136,8 @@ anchor_positions(3,:,:) = [
 anchor_positions(4,:,:) = [
 	0.326, 0.441, 1.649;...
 	0.424, 0.441, 1.649;...
+	0.374, 0.441, 1.738;...
+	0.374, 0.441, 1.738;...
 	0.374, 0.441, 1.738 ...
 ]-.113;
 %%Positions with all antennas taken into account (extended away from anchors)
@@ -167,7 +177,7 @@ if(strcmp(res.operation,'toa_calibration'))
 	end
 
 	measured_toa_errors = [];
-	for ii=start_timepoint:3:last_step_idx
+	for ii=start_timepoint:res.mod_index:last_step_idx
 		try
 			load(['timestep',num2str(ii)]);
 			anchor_positions_div = zeros(num_anchors,3);
@@ -203,18 +213,17 @@ elseif(strcmp(res.operation,'diversity_localization'))
 	end
 	diversity_choices = [];
 	imp_toas_agg = [];
-	est_positions = zeros(3,1,3);
 	cur_folder = -1;
 	if(sub_folders)
 		last_step_idx = 18811; %TODO: Fix this...
 	end
-	for ii=start_timepoint:3:last_step_idx
+	for ii=start_timepoint:res.mod_index:last_step_idx
 		tic;
 		disp('reading')
 		%All five consecutive timesteps are necessary to calculate position
 		try
 			success = false;
-			for jj=1:3
+			for jj=1:res.mod_index
 				if(sub_folders)
 					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
 				end
@@ -226,13 +235,13 @@ elseif(strcmp(res.operation,'diversity_localization'))
 		disp('done reading')
 
 		if(success)
-			imp_agg = zeros([size(imp),3]);
-			imp_toa_idxs_agg = zeros(4,3);
-			prf_est_agg = zeros(1,3);
+			imp_agg = zeros([size(imp),res.mod_index]);
+			imp_toa_idxs_agg = zeros(4,res.mod_index);
+			prf_est_agg = zeros(1,res.mod_index);
 			drift_time_in_samples = 0;
-			div_metric = zeros(4,3);
+			div_metric = zeros(4,res.mod_index);
 			%Start by refactoring ToA estimates by using 20% of the max amplitude instead of 20% of each snapshot
-			for jj=1:3
+			for jj=1:res.mod_index
 				if(sub_folders)
 					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
 				end
@@ -241,7 +250,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 			end
 			imp_maxs = max(squeeze(max(abs(imp_agg),[],2)),[],2);
 			imp_toa_div_idxs = zeros(num_anchors,1);
-			for jj=1:3
+			for jj=1:res.mod_index
 				for kk=1:num_anchors
 					cand_toa = impThresh(abs(imp_agg(kk,:,jj)),imp_maxs(kk)*THRESH);
 					if(length(cand_toa) == 1)
@@ -254,7 +263,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 				save([cur_dir,'/timestep',num2str(ii+jj-1)],'-append','imp_toa_div_idxs');
 			end
 
-			for jj=1:3
+			for jj=1:res.mod_index
 				if(sub_folders)
 					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
 				end
@@ -270,27 +279,27 @@ elseif(strcmp(res.operation,'diversity_localization'))
 				imp_toa_idxs_agg(:,jj) = imp_toa_div_idxs;
 				prf_est_agg(jj) = prf_est;
 
-				for kk=1:4
-					%Calculate the los ratio by calculating los peak amplitude through successive addition
-					los_amp = 0;
-					idx_ctr = imp_toa_div_idxs(kk);
-					idx_tot = 0;
-					while(idx_tot < INTERP/2)
-						los_amp = los_amp + abs(imp(kk,idx_ctr));
-						idx_tot = idx_tot + 1;
-						idx_ctr = idx_ctr + 1;
-						if(idx_ctr > size(imp,2))
-							idx_ctr = 1;
-						end
-					end
-					div_metric(kk,jj) = max(abs(imp(kk,:)));%los_amp;
-				end
+				%for kk=1:4
+				%	%Calculate the los ratio by calculating los peak amplitude through successive addition
+				%	los_amp = 0;
+				%	idx_ctr = imp_toa_div_idxs(kk);
+				%	idx_tot = 0;
+				%	while(idx_tot < INTERP/2)
+				%		los_amp = los_amp + abs(imp(kk,idx_ctr));
+				%		idx_tot = idx_tot + 1;
+				%		idx_ctr = idx_ctr + 1;
+				%		if(idx_ctr > size(imp,2))
+				%			idx_ctr = 1;
+				%		end
+				%	end
+				%	div_metric(kk,jj) = max(abs(imp(kk,:)));%los_amp;
+				%end
 			end
 
-			imp_toa_idxs_div = zeros(4,3);
+			imp_toa_idxs_div = zeros(4,res.mod_index);
 			imp_toa_idxs_div = imp_toa_idxs_agg;
 
-			div_metric2 = zeros(4,3);
+			div_metric2 = zeros(4,res.mod_index);
 			div_metric2 = div_metric;
 
 			imp_toas_div = imp_toa_idxs_div/(2*prf_est*num_steps*size(square_phasors,3)/2)/(INTERP+1)*3e8;
@@ -301,7 +310,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 			temp_toas_div = imp_toas_div - repmat(imp_toas_div(:,1),[1,size(imp_toas_div,2)]);
 			temp_toas_div(temp_toas_div > half_prf) = temp_toas_div(temp_toas_div > half_prf) - prf_est;
 			temp_toas_div(temp_toas_div < -half_prf) = temp_toas_div(temp_toas_div < -half_prf) + prf_est;
-
+		
 			%Take min, but if it's really far off from the rest, take the next (likely interference-induced or poor overall SNR)
 			[temp_toas_sorted,diversity_sort] = sort(temp_toas_div,2);
 			diversity_choice = zeros(num_anchors,1);
@@ -401,12 +410,12 @@ elseif(strcmp(res.operation,'post_localization'))
 	end
 	timestep_step = 1;
 	if(strcmp(res.system_setup,'diversity'))
-		timestep_step = 3;
+		timestep_step = res.mod_index;
 	end
 	est_positions = zeros(length(timestep_files),3);
 	toa_hist = zeros(length(timestep_files),4);
 	good_ests = zeros(length(timestep_files),1);
-	toa_errors_hist = zeros(length(timestep_files),12);
+	toa_errors_hist = zeros(length(timestep_files),20);
 	diversity_choices = zeros(length(timestep_files),4);
 	cur_folder = -1;
 	if(sub_folders)
@@ -428,6 +437,7 @@ elseif(strcmp(res.operation,'post_localization'))
 			imp_toas = imp_toas - measured_toa_errors.';
 			imp_toas = modImps(imp_toas,prf_est);
 			anchor_pos = reshape(anchor_positions,[size(anchor_positions,1)*size(anchor_positions,2),size(anchor_positions,3)]);
+			%keyboard;
 			[pos_temp, temp_toa_errors] = runNewtonLocalization(anchor_pos, imp_toas_div, measured_toa_errors, prf_est);
 			toa_errors_hist(ii,:) = temp_toa_errors(:);
 			temp_toa_errors = reshape(temp_toa_errors,[size(imp_toas_div)]);
@@ -584,8 +594,8 @@ while min(file_offsets) >= 0
 	end
 	
 	%Remove any iq data contaminated by narrowband inteference
+	removed_freq_steps = cur_iq_data(:,res.ignore_freq_steps,:);
 	cur_iq_data(:,res.ignore_freq_steps,:) = 0;
-	%keyboard
 
 	if first_time
 		load ../tx_phasors;
@@ -608,6 +618,9 @@ while min(file_offsets) >= 0
 		prf_est_history = [prf_est_history(2:NUM_HIST);prf_est];
 	end
 	prf_est = mean(prf_est_history);
+
+	%cur_iq_data(:,res.ignore_freq_steps,:) = removed_freq_steps;
+	%res.ignore_freq_steps = [];
 
 	%square_ests = [square_ests,square_est];
 	%time_offset_maxs = [time_offset_maxs,time_offset_max];
