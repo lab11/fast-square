@@ -10,6 +10,14 @@
 namespace gr {
 namespace fast_square {
 
+typedef struct {
+        double toas[TOT_ANTENNAS];
+	double toa_errors[TOT_ANTENNAS];
+        double anchor_positions_x[TOT_ANTENNAS];
+        double anchor_positions_y[TOT_ANTENNAS];
+        double anchor_positions_z[TOT_ANTENNAS];
+} my_function_data;
+
 
 class harmonic_localizer_impl : public harmonic_localizer
 {
@@ -30,6 +38,7 @@ private:
 	gr_complex d_i;
 	std::string d_gatd_id;
 	clock_t d_start_time;
+	my_function_data d_objective_data;
 
 	void readToAErrors();
 	void readActualFFT();

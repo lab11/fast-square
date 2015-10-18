@@ -22,11 +22,6 @@ double myfunc(unsigned n, const double *x, double *grad, void *my_func_data)
 	double pz = x[2];
 	double t = x[3];
 	my_function_data *func_data = (my_function_data*)my_func_data;
-	//std::cout << px << std::endl;
-	//std::cout << py << std::endl;
-	//std::cout << pz << std::endl;
-	//std::cout << t << std::endl;
-	//std::cout << grad << std::endl;
 
 	double error_cum = 0.0;
 	for(ii=0; ii < NUM_ANCHORS; ii++){
@@ -35,36 +30,17 @@ double myfunc(unsigned n, const double *x, double *grad, void *my_func_data)
 			error_cum += pow(sqrt((pow(px-func_data->anchor_positions_x[cur_idx],2) + 
 			                       pow(py-func_data->anchor_positions_y[cur_idx],2) + 
 			                       pow(pz-func_data->anchor_positions_z[cur_idx],2))) - (func_data->toas[cur_idx] - t),2);
-			//std::cout << "cur_idx = " << cur_idx << " error_cum = " << error_cum << std::endl;
 		}
 	}
-	//std::cout << "GOT CALLED, error_cum = " << error_cum << std::endl;
 	
 	return error_cum;
 }
 
-typedef struct {
-    double a, b;
-} my_constraint_data;
-
-double myconstraint(unsigned n, const double *x, double *grad, void *data)
-{
-    my_constraint_data *d = (my_constraint_data *) data;
-    double a = d->a, b = d->b;
-    if (grad) {
-        grad[0] = 3 * a * (a*x[0] + b) * (a*x[0] + b);
-        grad[1] = -1.0;
-    }
-    return ((a*x[0] + b) * (a*x[0] + b) * (a*x[0] + b) - x[1]);
- }
-
 int main(){
 	int ii;
-	//double lb[2] = { -HUGE_VAL, 0 }; /* lower bounds */
 	nlopt_opt opt;
 	
 	opt = nlopt_create(NLOPT_LN_BOBYQA, 4); /* algorithm and dimensionality */
-	//nlopt_set_lower_bounds(opt, lb);
 	my_function_data objective_data = {
 		{ 39.4969, 33.4257, 40.6328, 12.6834, 39.2581, 33.4527, 40.7725, 12.7014, 39.2400, 33.4708, 40.6238, 12.7330, 39.2445, 33.4302, 40.6328, 12.6608, 39.2851, 33.6195, 40.6643, 12.6744
 		},
@@ -92,11 +68,6 @@ int main(){
 	}
 
 	nlopt_set_min_objective(opt, myfunc, &objective_data);
-	
-	//my_constraint_data data[2] = { {2,0}, {-1,1} };
-	
-	//nlopt_add_inequality_constraint(opt, myconstraint, &data[0], 1e-8);
-	//nlopt_add_inequality_constraint(opt, myconstraint, &data[1], 1e-8);
 	
 	nlopt_set_xtol_rel(opt, 1e-6);
 	
