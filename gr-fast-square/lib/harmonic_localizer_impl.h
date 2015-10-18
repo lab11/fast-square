@@ -11,11 +11,11 @@ namespace gr {
 namespace fast_square {
 
 typedef struct {
-        double toas[TOT_ANTENNAS];
-	double toa_errors[TOT_ANTENNAS];
-        double anchor_positions_x[TOT_ANTENNAS];
-        double anchor_positions_y[TOT_ANTENNAS];
-        double anchor_positions_z[TOT_ANTENNAS];
+        double *toas;
+	double *toa_errors;
+        double *anchor_positions_x;
+        double *anchor_positions_y;
+        double *anchor_positions_z;
 } my_function_data;
 
 
@@ -27,11 +27,11 @@ private:
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<double> d_harmonic_freqs;
 	std::vector<std::vector<float> > d_poss_steps;
-	std::vector<std::vector<std::vector<float> > > d_anchor_pos;
+	std::vector<std::vector<double> > d_anchor_pos;
 	std::vector<float> d_harmonic_freqs_f;
 	std::vector<float> d_time_delay_in_samples;
 	std::vector<float> d_fft_window;
-	std::vector<int> d_toa_errors;
+	std::vector<double> d_toa_errors;
 	std::vector<gr_complex> d_actual_fft;
 	float d_prf_est;
 	int d_abs_count;
@@ -43,6 +43,7 @@ private:
 	void readToAErrors();
 	void readActualFFT();
 	std::vector<float> tdoa4(std::vector<double> toas);
+	std::vector<float> tdoa_newton(my_function_data &objective_data);
 	std::vector<float> tdoa4_slow(std::vector<double> &toas);
 	void genFFTWindow();
 	gr_complex polyval(std::vector<float> &p, gr_complex x);

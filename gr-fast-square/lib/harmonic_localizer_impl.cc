@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <string>
 #include <fstream>
+#include <nlopt.h>
 
 namespace gr {
 namespace fast_square {
@@ -60,8 +61,8 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	d_objective_data.toas = new double[TOT_ANTENNAS];
 	d_objective_data.toa_errors = new double[TOT_ANTENNAS];
 	d_anchor_pos.clear();
-	std::vector<std::vector<float> > anchor_antennas(NUM_ANCHORS*NUM_ANTENNAS_PER_ANCHOR);
-	std::vector<float> cur_antenna_pos(3);
+	std::vector<std::vector<double> > anchor_antennas(NUM_ANCHORS*NUM_ANTENNAS_PER_ANCHOR);
+	std::vector<double> cur_antenna_pos(3);
 	for(int ii=0; ii < NUM_ANCHORS*NUM_ANTENNAS_PER_ANCHOR; ii++){
 		fread((void*)(&cur_antenna_pos[0]), 3*sizeof(float), 1, source);
 		d_objective_data.anchor_positions_x[ii] = cur_antenna_pos[0];
@@ -119,7 +120,7 @@ void harmonic_localizer_impl::readToAErrors(){
 		
 	//Read complex numbers in one at a time
 	for(int ii=0; ii < NUM_ANCHORS*NUM_STEPS*NUM_HARM_PER_STEP_POST; ii++){
-		int cur_toa_error;
+		double cur_toa_error;
 		fread((void*)(&cur_toa_error), sizeof(cur_toa_error), 1, source);
 		d_toa_errors.push_back(cur_toa_error);
 	}
@@ -140,7 +141,7 @@ double myfunc(unsigned n, const double *x, double *grad, void *my_func_data)
 
         double error_cum = 0.0;
         for(ii=0; ii < NUM_ANCHORS; ii++){
-                for(jj=0; jj < NUM_ANTENNAS; jj++){
+                for(jj=0; jj < NUM_ANTENNAS_PER_ANCHOR; jj++){
                         int cur_idx = ii + jj*NUM_ANCHORS;
                         error_cum += pow(sqrt((pow(px-func_data->anchor_positions_x[cur_idx],2) + 
                                                pow(py-func_data->anchor_positions_y[cur_idx],2) + 
@@ -155,9 +156,11 @@ std::vector<float> harmonic_localizer_impl::tdoa_newton(my_function_data &object
         int ii;
         nlopt_opt opt = nlopt_create(NLOPT_LN_BOBYQA, 4); /* algorithm and dimensionality */
 
+	std::cout << "Yup, got here..." << std::endl;
+
         double target_toa = objective_data.toas[0];
         double mod_dist = 3e8/d_prf_est;
-        for(ii=1; ii < NUM_ANCHORS*NUM_ANTENNAS; ii++){
+        for(ii=1; ii < TOT_ANTENNAS; ii++){
                 double cand_toa = objective_data.toas[ii];
                 while(cand_toa < target_toa - mod_dist/2)
                         cand_toa += mod_dist;
@@ -166,6 +169,8 @@ std::vector<float> harmonic_localizer_impl::tdoa_newton(my_function_data &object
                 objective_data.toas[ii] = cand_toa;
         }
 
+	std::cout << "Yup, got here..." << std::endl;
+
         nlopt_set_min_objective(opt, myfunc, &objective_data);
 
         nlopt_set_xtol_rel(opt, 1e-6);
@@ -173,7 +178,7 @@ std::vector<float> harmonic_localizer_impl::tdoa_newton(my_function_data &object
         double x[4] = { 2.0, 2.0, 1.0, objective_data.toas[0] };  /* some initial guess */
         double minf; /* the minimum objective value, upon return */
 
-        nlopt_optimize(opt, x, &minf)
+        nlopt_optimize(opt, x, &minf);
 
 	for(ii=0; ii < NUM_ANCHORS*NUM_ANTENNAS_PER_ANCHOR; ii++){
 		double cum_error = 0.0;
@@ -705,8 +710,10 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	//std::vector<float> positions_fast = tdoa4(imp_in_ns);
 	//std::vector<float> positions = tdoa4_slow(imp_in_m);
 	memcpy(&d_objective_data.toas[0], &imp_in_m[0], imp_in_m.size()*sizeof(double));
-        for(ii=0; ii < NUM_ANCHORS*NUM_ANTENNAS; ii++)
+        for(int ii=0; ii < TOT_ANTENNAS; ii++){
+		std::cout << d_objective_data.toas[ii] << std::endl;
                 d_objective_data.toas[ii] -= d_toa_errors[ii%NUM_ANCHORS];
+	}
 
 	std::vector<float> positions = tdoa_newton(d_objective_data);
 
@@ -725,8 +732,8 @@ void harmonic_localizer_impl::harmonicLocalization(){
 		double min_toa_error = +1e6; //Something large...
 		int min_toa_error_idx = 0;
 		for(int jj=0; jj < NUM_ANTENNAS_PER_ANCHOR; jj++){
-			cur_idx = jj*NUM_ANCHORS+ii;
-			cur_toa_error = d_objective_data.toa_errors[jj*NUM_ANCHORS+ii];
+			int cur_idx = jj*NUM_ANCHORS+ii;
+			double cur_toa_error = d_objective_data.toa_errors[jj*NUM_ANCHORS+ii];
 			if(abs(cur_toa_error) < min_toa_error){
 				min_toa_error_idx = cur_idx;
 				min_toa_error = abs(cur_toa_error);
@@ -742,7 +749,7 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	objective_data.anchor_positions_z = &anchor_z_coords[0];
 	objective_data.toas = &anchor_toas[0];
 	
-	std::vector<float> positions = tdoa_newton(objective_data);
+	positions = tdoa_newton(objective_data);
 	//if(positions[3] > 2.5){
 	//	std::cout << d_abs_count << " ";
 	//	for(int ii=0; ii < positions.size(); ii++){
@@ -808,7 +815,9 @@ int harmonic_localizer_impl::work(int noutput_items,
 		compensateRCLP();
 		compensateRCHP();
 		compensateStepTime();
+		std::cout << "DEFINITELY GOT HERE" << std::endl;
 		harmonicLocalization();
+		std::cout << "TOTALLY GOT HERE" << std::endl;
 		//std::cout << d_abs_count << std::endl;
 		//It is assumed that each dataset coming in has already populated d_harmonic_phasors and d_hfreq_key
 		//if(d_abs_count == 9){
