@@ -13,12 +13,12 @@
 namespace gr {
 namespace fast_square {
 
-stream_parser::sptr stream_parser::make(){
+stream_parser::sptr stream_parser::make(const std::string &seq_num_tag_name){
 	return gnuradio::get_initial_sptr
-		(new stream_parser_impl());
+		(new stream_parser_impl(seq_num_tag_name));
 }
 
-stream_parser_impl::stream_parser_impl()
+stream_parser_impl::stream_parser_impl(const std::string &seq_num_tag_name)
 	: block("stream_parser",
 			io_signature::make(4, 4, sizeof(gr_complex)),
 			io_signature::make(0, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex))),
@@ -35,6 +35,9 @@ stream_parser_impl::stream_parser_impl()
 	const int alignment_multiple =
 		volk_get_alignment() / sizeof(float);
 	set_alignment(std::max(1,alignment_multiple));
+
+	d_me = pmt::string_to_symbol(id.str());
+	d_seq_num_key = pmt::string_to_symbol(seq_num_tag_name);
 
 	//Open files to put timestamps in...
 	char filename[40];
@@ -65,6 +68,9 @@ int stream_parser_impl::general_work(int noutput_items,
 	int out_count = 0;
 	int output_offset = 0;
 
+	const uint64_t nread = nitems_read(0);
+	uint64_t abs_out_sample_cnt = nitems_written(0);
+
 	//Loop over all anchors
 	for(int ii=0; ii < input_items.size(); ii++){
 		const gr_complex *in = (const gr_complex *) input_items[ii];
@@ -93,6 +99,14 @@ int stream_parser_impl::general_work(int noutput_items,
 				break;
 			} else {
 				uint32_t sequence_num = getSequenceNum(data_history[ii][SAMPLES_PER_SEQ-1]);
+				//Add tag to data stream indicating sequence number
+				add_item_tag(0,
+					abs_out_sample_cnt + ii;
+					d_seq_num_key,
+					pmt::from_uint64((uint64_t)sequence_num),
+					d_me
+				);
+
 				timeval cur_time;
 				char micro_cstr[7];
 				gettimeofday(&cur_time, NULL);

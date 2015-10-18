@@ -149,7 +149,7 @@ class uhd_fft(gr.top_block):
 		self.logfile3 = blocks.file_sink(gr.sizeof_gr_complex, "usrp_chan3.dat")
 		self.connect((self.source2, 1), self.logfile3)
 	else:
-		self.parser = fast_square.stream_parser()
+		self.parser = fast_square.stream_parser("seq_nums")
 		if self.fromfile == True:
 			self.logfile0 = blocks.file_source(gr.sizeof_gr_complex, "usrp_chan0.dat", True)
 			self.logfile1 = blocks.file_source(gr.sizeof_gr_complex, "usrp_chan1.dat", True)
@@ -176,7 +176,7 @@ class uhd_fft(gr.top_block):
 		self.connect((self.prf_est, 1), (self.h_extract, 1))
 		self.connect((self.prf_est, 2), (self.h_extract, 2))
 		self.connect((self.prf_est, 3), (self.h_extract, 3))
-		self.h_locate = fast_square.harmonic_localizer("phasor_calc", "harmonic_freqs", "prf_est", "Sek5SXpFPa", 1)
+		self.h_locate = fast_square.harmonic_localizer("phasor_calc", "harmonic_freqs", "prf_est", "Sek5SXpFPa", "seq_nums", 1)
 		self.connect((self.h_extract, 0), (self.h_locate, 0))
 		self.connect((self.h_extract, 1), (self.h_locate, 1))
 		self.connect((self.h_extract, 2), (self.h_locate, 2))

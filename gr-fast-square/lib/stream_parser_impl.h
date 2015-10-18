@@ -21,11 +21,12 @@ private:
 	bool d_restarted[4];
 	bool d_wait_for_restart;
 	std::vector<std::ofstream*> timestamp_files;
+	pmt::pmt_t d_seq_num_key;
 
 protected:
 
 public:
-	stream_parser_impl();
+	stream_parser_impl(const std::string &seq_num_tag_name);
 	~stream_parser_impl();
 
 	void forecast(int noutput_items, gr_vector_int &ninput_items_required);

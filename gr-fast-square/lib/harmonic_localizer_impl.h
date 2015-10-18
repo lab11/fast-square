@@ -23,7 +23,7 @@ class harmonic_localizer_impl : public harmonic_localizer
 {
 private:
 	fft::fft_complex *d_fft;
-	pmt::pmt_t d_phasor_key, d_hfreq_key, d_prf_key;
+	pmt::pmt_t d_phasor_key, d_hfreq_key, d_prf_key, d_seq_num_key;
 	std::vector<gr_complex> d_harmonic_phasors;
 	std::vector<double> d_harmonic_freqs;
 	std::vector<std::vector<float> > d_poss_steps;
@@ -39,6 +39,7 @@ private:
 	std::string d_gatd_id;
 	clock_t d_start_time;
 	my_function_data d_objective_data;
+	uint32_t d_seq_num;
 
 	void readToAErrors();
 	void readActualFFT();
@@ -61,7 +62,7 @@ private:
 protected:
 
 public:
-	harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_id, int nthreads);
+	harmonic_localizer_impl(const std::string &phasor_tag_name, const std::string &hfreq_tag_name, const std::string &prf_tag_name, const std::string &gatd_id, const std::string &seq_num_tag_name, int nthreads);
 	~harmonic_localizer_impl();
 
 	int work(int noutput_items,
