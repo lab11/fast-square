@@ -10,6 +10,7 @@
 #include <string>
 #include <fstream>
 #include <nlopt.h>
+#include <numeric>
 
 namespace gr {
 namespace fast_square {
@@ -23,7 +24,7 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	: sync_block("harmonic_localizer",
 			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex)),
 			io_signature::make(0, 0, 0)),
-	d_gatd_id(gatd_id), d_abs_count(0)
+	d_gatd_id(gatd_id), d_abs_count(0), d_visited(NUM_ANTENNAS_PER_ANCHOR, 0)
 {
 	d_phasor_key = pmt::string_to_symbol(phasor_tag_name);
 	d_hfreq_key = pmt::string_to_symbol(hfreq_tag_name);
@@ -120,7 +121,7 @@ void harmonic_localizer_impl::readToAErrors(){
 	FILE *source = fopen("measured_toa_errors.dat", "r");
 		
 	//Read complex numbers in one at a time
-	for(int ii=0; ii < NUM_ANCHORS*NUM_STEPS*NUM_HARM_PER_STEP_POST; ii++){
+	for(int ii=0; ii < NUM_ANCHORS; ii++){
 		double cur_toa_error;
 		fread((void*)(&cur_toa_error), sizeof(cur_toa_error), 1, source);
 		d_toa_errors.push_back(cur_toa_error);
@@ -621,7 +622,7 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 
 		//Must flip ToAs since not doing an FFT
 		int res_toa = FFT_SIZE_POST*INTERP-cand_toa_idx;
-		res_toa -= d_toa_errors[ii];
+		//res_toa -= d_toa_errors[ii];
 		res_toa %= FFT_SIZE_POST*INTERP;
 		if(res_toa < 0) res_toa += FFT_SIZE_POST*INTERP;
 		toas.push_back(res_toa);
@@ -710,78 +711,86 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	//Finally, determine position based on calculated ToAs...
 	//std::vector<float> positions_fast = tdoa4(imp_in_ns);
 	//std::vector<float> positions = tdoa4_slow(imp_in_m);
+	std::cout << "d_seq_num = " << d_seq_num << std::endl;
 	int cur_seq_num = d_seq_num % NUM_ANTENNAS_PER_ANCHOR;
-	memcpy(&d_objective_data.toas[0], &imp_in_m[0], imp_in_m.size()*sizeof(double));
+	d_visited[cur_seq_num] = 1;
         for(int ii=0; ii < NUM_ANCHORS; ii++){
-                d_objective_data.toas[ii*NUM_ANTENNAS_PER_ANCHOR+cur_seq_num] -= d_toa_errors[ii%NUM_ANCHORS];
+                d_objective_data.toas[ii+cur_seq_num*NUM_ANCHORS] = imp_in_m[ii] - d_toa_errors[ii];
+		std::cout << "d_objective_data.toas[" << ii+cur_seq_num*NUM_ANCHORS << "] = " << imp_in_m[ii] - d_toa_errors[ii] << std::endl;
 	}
 
 	if((d_seq_num % NUM_ANTENNAS_PER_ANCHOR) == (NUM_ANTENNAS_PER_ANCHOR-1)){ //TODO: This still isn't going to work...
-        	for(int ii=0; ii < TOT_ANTENNAS; ii++){
-			std::cout << d_objective_data.toas[ii] << std::endl;
-		}
-
-		std::vector<float> positions = tdoa_newton(d_objective_data);
-
-		//Determine which toas are closest to the 'average'
-		my_function_data objective_data;
-		objective_data.anchor_positions_x = new double[TOT_ANTENNAS];
-		objective_data.anchor_positions_y = new double[TOT_ANTENNAS];
-		objective_data.anchor_positions_z = new double[TOT_ANTENNAS];
-		objective_data.toas = new double[TOT_ANTENNAS];
-		objective_data.toa_errors = new double[TOT_ANTENNAS];
-		std::vector<double> anchor_x_coords;
-		std::vector<double> anchor_y_coords;
-		std::vector<double> anchor_z_coords;
-		std::vector<double> anchor_toas;
-		for(int ii=0; ii < NUM_ANCHORS; ii++){
-			double min_toa_error = +1e6; //Something large...
-			int min_toa_error_idx = 0;
-			for(int jj=0; jj < NUM_ANTENNAS_PER_ANCHOR; jj++){
-				int cur_idx = jj*NUM_ANCHORS+ii;
-				double cur_toa_error = d_objective_data.toa_errors[jj*NUM_ANCHORS+ii];
-				if(abs(cur_toa_error) < min_toa_error){
-					min_toa_error_idx = cur_idx;
-					min_toa_error = abs(cur_toa_error);
-				}
+		if(std::accumulate(d_visited.begin(), d_visited.end(), 0) == NUM_ANTENNAS_PER_ANCHOR){
+        		for(int ii=0; ii < TOT_ANTENNAS; ii++){
+				std::cout << d_objective_data.toas[ii] << std::endl;
 			}
-			anchor_x_coords.push_back(d_objective_data.anchor_positions_x[min_toa_error_idx]);
-			anchor_y_coords.push_back(d_objective_data.anchor_positions_y[min_toa_error_idx]);
-			anchor_z_coords.push_back(d_objective_data.anchor_positions_z[min_toa_error_idx]);
-			anchor_toas.push_back(d_objective_data.toas[min_toa_error_idx]);
-		}
-		objective_data.anchor_positions_x = &anchor_x_coords[0];
-		objective_data.anchor_positions_y = &anchor_y_coords[0];
-		objective_data.anchor_positions_z = &anchor_z_coords[0];
-		objective_data.toas = &anchor_toas[0];
-		
-		positions = tdoa_newton(objective_data);
-		//if(positions[3] > 2.5){
-		//	std::cout << d_abs_count << " ";
-		//	for(int ii=0; ii < positions.size(); ii++){
-		//		std::cout << positions[ii] << " ";
-		//	}
-		//	for(int ii=0; ii < imp_in_ns.size(); ii++){
-		//		std::cout << imp_in_ns[ii] << " ";
-		//	}
-		//	std::cout << std::endl;
-		//}
-		//if(d_abs_count == 1374){
-		for(int ii=0; ii < positions.size(); ii++){
-			std::cout << positions[ii] << " ";
-		}
-		//for(int ii=0; ii < positions_fast.size(); ii++){
-		//	std::cout << positions_fast[ii] << " ";
-		//}
-		std::cout << std::endl;
-		//}
-		sendRawSingle(positions);
 
-		delete objective_data.anchor_positions_x;
-		delete objective_data.anchor_positions_y;
-		delete objective_data.anchor_positions_z;
-		delete objective_data.toas;
-		delete objective_data.toa_errors;
+			std::vector<float> positions = tdoa_newton(d_objective_data);
+
+			//Determine which toas are closest to the 'average'
+			my_function_data objective_data;
+			objective_data.anchor_positions_x = new double[TOT_ANTENNAS];
+			objective_data.anchor_positions_y = new double[TOT_ANTENNAS];
+			objective_data.anchor_positions_z = new double[TOT_ANTENNAS];
+			objective_data.toas = new double[TOT_ANTENNAS];
+			objective_data.toa_errors = new double[TOT_ANTENNAS];
+			std::vector<double> anchor_x_coords;
+			std::vector<double> anchor_y_coords;
+			std::vector<double> anchor_z_coords;
+			std::vector<double> anchor_toas;
+			for(int ii=0; ii < NUM_ANCHORS; ii++){
+				double min_toa_error = +1e6; //Something large...
+				int min_toa_error_idx = 0;
+				for(int jj=0; jj < NUM_ANTENNAS_PER_ANCHOR; jj++){
+					int cur_idx = jj*NUM_ANCHORS+ii;
+					double cur_toa_error = d_objective_data.toa_errors[jj*NUM_ANCHORS+ii];
+					if(abs(cur_toa_error) < min_toa_error){
+						min_toa_error_idx = cur_idx;
+						min_toa_error = abs(cur_toa_error);
+					}
+				}
+				anchor_x_coords.push_back(d_objective_data.anchor_positions_x[min_toa_error_idx]);
+				anchor_y_coords.push_back(d_objective_data.anchor_positions_y[min_toa_error_idx]);
+				anchor_z_coords.push_back(d_objective_data.anchor_positions_z[min_toa_error_idx]);
+				anchor_toas.push_back(d_objective_data.toas[min_toa_error_idx]);
+			}
+			objective_data.anchor_positions_x = &anchor_x_coords[0];
+			objective_data.anchor_positions_y = &anchor_y_coords[0];
+			objective_data.anchor_positions_z = &anchor_z_coords[0];
+			objective_data.toas = &anchor_toas[0];
+			
+			positions = tdoa_newton(objective_data);
+			//if(positions[3] > 2.5){
+			//	std::cout << d_abs_count << " ";
+			//	for(int ii=0; ii < positions.size(); ii++){
+			//		std::cout << positions[ii] << " ";
+			//	}
+			//	for(int ii=0; ii < imp_in_ns.size(); ii++){
+			//		std::cout << imp_in_ns[ii] << " ";
+			//	}
+			//	std::cout << std::endl;
+			//}
+			//if(d_abs_count == 1374){
+			for(int ii=0; ii < positions.size(); ii++){
+				std::cout << positions[ii] << " ";
+			}
+			//for(int ii=0; ii < positions_fast.size(); ii++){
+			//	std::cout << positions_fast[ii] << " ";
+			//}
+			std::cout << std::endl;
+			//}
+			sendRawSingle(positions);
+
+			delete objective_data.anchor_positions_x;
+			delete objective_data.anchor_positions_y;
+			delete objective_data.anchor_positions_z;
+			delete objective_data.toas;
+			delete objective_data.toa_errors;
+		}
+
+		//Reset visited vector
+		std::fill(d_visited.begin(), d_visited.end(), 0);
+
 	}
 }
 
