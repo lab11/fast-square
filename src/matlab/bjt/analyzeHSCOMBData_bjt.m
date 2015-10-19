@@ -55,7 +55,7 @@ sample_rate = 64e6;
 decim_factor = 33; %DEPENDENT ON FREQ
 prf = 4e6;
 prf_accuracy = 20e-6;
-coarse_precision = 1e-7;
+coarse_precision = 1e-8;
 fine_precision = 1e-9;
 stream_decim = 33;
 start_timepoint = 15;
@@ -163,6 +163,8 @@ anchor_positions(4,:,:) = [
 %	0.261, 0.316, 1.888 ...
 %];
 num_anchors = size(anchor_positions,1);
+times = zeros(10e3,1);
+time_index = 1;
 
 %Check to see if we're performing toa calibration (which comes after running an entire dataset)
 if(strcmp(res.operation,'toa_calibration'))
@@ -232,7 +234,6 @@ elseif(strcmp(res.operation,'diversity_localization'))
 		catch
 		end 
 		disp('done reading')
-		tic;
 
 		if(success)
 			imp_agg = zeros([size(imp),res.mod_index]);
@@ -248,6 +249,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 				load([cur_dir,'/timestep',num2str(ii+jj-1)]);
 				imp_agg(:,:,jj) = imp;
 			end
+			tic;
 			imp_maxs = max(squeeze(max(abs(imp_agg),[],2)),[],2);
 			imp_toa_div_idxs = zeros(num_anchors,1);
 			for jj=1:res.mod_index
@@ -257,13 +259,6 @@ elseif(strcmp(res.operation,'diversity_localization'))
 						imp_toa_div_idxs(kk) = cand_toa;
 					end
 				end
-				if(sub_folders)
-					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
-				end
-				save([cur_dir,'/timestep',num2str(ii+jj-1)],'-append','imp_toa_div_idxs');
-			end
-
-			for jj=1:res.mod_index
 				if(sub_folders)
 					cur_folder = goToSubFolder(cur_folder, ii+jj-1);
 				end
@@ -324,6 +319,8 @@ elseif(strcmp(res.operation,'diversity_localization'))
 
 			%%Diversity choice option #1: Highest div metric
 			%[~,diversity_choice] = max(div_metric2,[],2);
+			times(time_index) = toc;
+			time_index = time_index + 1;
 
 			if(sub_folders)
 				cur_folder = goToSubFolder(cur_folder, ii);
@@ -388,9 +385,9 @@ elseif(strcmp(res.operation,'diversity_localization'))
 		%	imp_toas_agg = [imp_toas_agg,imp_toas];
 		%end
 		ii
-		toc;
 	end
 	cd(cur_dir)
+	save times_diversity times time_index
 	return;
 elseif(strcmp(res.operation,'post_localization'))
 	load('../measured_toa_errors');
@@ -423,7 +420,6 @@ elseif(strcmp(res.operation,'post_localization'))
 	end
 	for ii=start_timepoint:timestep_step:last_step_idx
 		try
-			tic;
 			if(sub_folders)
 				cur_folder = goToSubFolder(cur_folder, ii);
 			end
@@ -498,7 +494,8 @@ elseif(strcmp(res.operation,'post_localization'))
 				%save(['timestep',num2str(ii)],'-append','est_position');
 			end
 			ii
-			toc
+			times(time_index) = toc;
+			time_index = time_index+1;
 			est_positions(ii,:)
 			%keyboard;
 		catch
@@ -511,6 +508,7 @@ elseif(strcmp(res.operation,'post_localization'))
 	est_positions = est_positions(est_positions(:,1) > 0,:);
 	save([cur_dir,'/est_positions'],'est_positions','toa_hist','good_ests','diversity_choices');
 	cd(cur_dir)
+	save times_post times time_index
 	return;
 elseif(strcmp(res.operation,'reset_cal_data'))
 	tx_phasors = zeros(num_anchors,num_steps,num_harmonics_present);
@@ -573,6 +571,7 @@ while min(file_offsets) >= 0
 				[cur_iq_data(ii,:,:), cur_counters(ii), file_offsets(ii)] = readHSCOMBData_single(['usrp_chan',num2str(ii-1),'.dat'],file_offsets(ii),samples_per_freq, restart_samples, num_steps);
 				fft_len = 2^ceil(log2(size(cur_iq_data,3)));
 				if(file_offsets(ii) == -1)
+					save times times time_index
 					return;
 				end
 			end
@@ -656,7 +655,8 @@ while min(file_offsets) >= 0
 	else
 		harmonicLocalization_r7;
 		imp_toas = imp_toas*2;
-		toc
+		times(time_index) = toc;
+		time_index = time_index + 1;
 		%if cur_timepoint == 211
 		%	keyboard;
 		%end
@@ -667,4 +667,3 @@ while min(file_offsets) >= 0
 	full_search_flag = false;
 	%disp(['done with timepoint ', num2str(cur_timepoint)])
 end
-
