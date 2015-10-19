@@ -218,7 +218,6 @@ elseif(strcmp(res.operation,'diversity_localization'))
 		last_step_idx = 18811; %TODO: Fix this...
 	end
 	for ii=start_timepoint:res.mod_index:last_step_idx
-		tic;
 		disp('reading')
 		%All five consecutive timesteps are necessary to calculate position
 		try
@@ -233,6 +232,7 @@ elseif(strcmp(res.operation,'diversity_localization'))
 		catch
 		end 
 		disp('done reading')
+		tic;
 
 		if(success)
 			imp_agg = zeros([size(imp),res.mod_index]);
@@ -429,13 +429,13 @@ elseif(strcmp(res.operation,'post_localization'))
 			end
 			load([cur_dir,'/timestep',num2str(ii)]);
 			tic
-			if(strcmp(res.system_setup,'diversity'))
-				for jj=1:length(diversity_choice)
-					imp_toas(jj) = imp_toas_div(jj,diversity_choice(jj));
-				end
-			end
-			imp_toas = imp_toas - measured_toa_errors.';
-			imp_toas = modImps(imp_toas,prf_est);
+			%if(strcmp(res.system_setup,'diversity'))
+			%	for jj=1:length(diversity_choice)
+			%		imp_toas(jj) = imp_toas_div(jj,diversity_choice(jj));
+			%	end
+			%end
+			%imp_toas = imp_toas - measured_toa_errors.';
+			%imp_toas = modImps(imp_toas,prf_est);
 			anchor_pos = reshape(anchor_positions,[size(anchor_positions,1)*size(anchor_positions,2),size(anchor_positions,3)]);
 			%keyboard;
 			[pos_temp, temp_toa_errors] = runNewtonLocalization(anchor_pos, imp_toas_div, measured_toa_errors, prf_est);
@@ -549,7 +549,6 @@ end
 %cur_iq_data = squeeze(data_iq(:,:,1,:));
 full_search_flag = true;
 
-%fft_len = 2^ceil(log2(size(data_iq,4)));
 
 %Loop through each timepoint
 %tx_phasors = zeros(num_steps,num_harmonics_present);
@@ -572,6 +571,7 @@ while min(file_offsets) >= 0
 		for ii=1:num_anchors
 			if cur_counters(ii) < cur_timepoint
 				[cur_iq_data(ii,:,:), cur_counters(ii), file_offsets(ii)] = readHSCOMBData_single(['usrp_chan',num2str(ii-1),'.dat'],file_offsets(ii),samples_per_freq, restart_samples, num_steps);
+				fft_len = 2^ceil(log2(size(cur_iq_data,3)));
 				if(file_offsets(ii) == -1)
 					return;
 				end
