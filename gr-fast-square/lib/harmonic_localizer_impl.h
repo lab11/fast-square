@@ -45,7 +45,7 @@ private:
 	void readToAErrors();
 	void readActualFFT();
 	std::vector<float> tdoa4(std::vector<double> toas);
-	std::vector<float> tdoa_newton(my_function_data &objective_data);
+	std::vector<float> tdoa_newton(my_function_data &objective_data, int num_toas);
 	std::vector<float> tdoa4_slow(std::vector<double> &toas);
 	void genFFTWindow();
 	gr_complex polyval(std::vector<float> &p, gr_complex x);

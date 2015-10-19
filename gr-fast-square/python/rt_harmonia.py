@@ -30,6 +30,7 @@ import math
 import scopesink_cir
 import fast_square
 import sdrp
+import os
 
 class uhd_fft(gr.top_block):
 
@@ -200,6 +201,8 @@ class uhd_fft(gr.top_block):
 		#self.connect((self.h_extract, 3), self.ns3)
 
 if __name__ == '__main__':
+    #print 'Blocked waiting for GDB attach (pid = %d)' % (os.getpid(),)
+    #raw_input ('Press Enter to continue: ')
     parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
     parser.add_option("-s", "--param-samp-rate", dest="param_samp_rate", type="eng_float", default=eng_notation.num_to_str(4e6),
         help="Set Sample Rate [default=%default]")

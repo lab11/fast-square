@@ -154,15 +154,13 @@ double myfunc(unsigned n, const double *x, double *grad, void *my_func_data)
         return error_cum;
 }
 
-std::vector<float> harmonic_localizer_impl::tdoa_newton(my_function_data &objective_data){
+std::vector<float> harmonic_localizer_impl::tdoa_newton(my_function_data &objective_data, int num_toas){
         int ii;
         nlopt_opt opt = nlopt_create(NLOPT_LN_BOBYQA, 4); /* algorithm and dimensionality */
 
-	std::cout << "Yup, got here..." << std::endl;
-
         double target_toa = objective_data.toas[0];
         double mod_dist = 3e8/d_prf_est;
-        for(ii=1; ii < TOT_ANTENNAS; ii++){
+        for(ii=1; ii < num_toas; ii++){
                 double cand_toa = objective_data.toas[ii];
                 while(cand_toa < target_toa - mod_dist/2)
                         cand_toa += mod_dist;
@@ -170,8 +168,6 @@ std::vector<float> harmonic_localizer_impl::tdoa_newton(my_function_data &object
                         cand_toa -= mod_dist;
                 objective_data.toas[ii] = cand_toa;
         }
-
-	std::cout << "Yup, got here..." << std::endl;
 
         nlopt_set_min_objective(opt, myfunc, &objective_data);
 
@@ -182,13 +178,19 @@ std::vector<float> harmonic_localizer_impl::tdoa_newton(my_function_data &object
 
         nlopt_optimize(opt, x, &minf);
 
-	for(ii=0; ii < NUM_ANCHORS*NUM_ANTENNAS_PER_ANCHOR; ii++){
+	for(ii=0; ii < num_toas; ii++){
 		double cum_error = 0.0;
 		cum_error += pow(x[0] - objective_data.anchor_positions_x[ii],2);
 		cum_error += pow(x[1] - objective_data.anchor_positions_y[ii],2);
 		cum_error += pow(x[2] - objective_data.anchor_positions_z[ii],2);
 		objective_data.toa_errors[ii] = objective_data.toas[ii]-sqrt(cum_error);
 	}
+
+	std::vector<float> ret;
+	for(int ii=0; ii < 3; ii++){
+		ret.push_back((float)x[ii]);
+	}
+	return ret;
 }
 
 std::vector<float> harmonic_localizer_impl::tdoa4_slow(std::vector<double> &toas){
@@ -716,7 +718,6 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	d_visited[cur_seq_num] = 1;
         for(int ii=0; ii < NUM_ANCHORS; ii++){
                 d_objective_data.toas[ii+cur_seq_num*NUM_ANCHORS] = imp_in_m[ii] - d_toa_errors[ii];
-		std::cout << "d_objective_data.toas[" << ii+cur_seq_num*NUM_ANCHORS << "] = " << imp_in_m[ii] - d_toa_errors[ii] << std::endl;
 	}
 
 	if((d_seq_num % NUM_ANTENNAS_PER_ANCHOR) == (NUM_ANTENNAS_PER_ANCHOR-1)){ //TODO: This still isn't going to work...
@@ -725,15 +726,11 @@ void harmonic_localizer_impl::harmonicLocalization(){
 				std::cout << d_objective_data.toas[ii] << std::endl;
 			}
 
-			std::vector<float> positions = tdoa_newton(d_objective_data);
+			std::vector<float> positions = tdoa_newton(d_objective_data, TOT_ANTENNAS);
 
 			//Determine which toas are closest to the 'average'
 			my_function_data objective_data;
-			objective_data.anchor_positions_x = new double[TOT_ANTENNAS];
-			objective_data.anchor_positions_y = new double[TOT_ANTENNAS];
-			objective_data.anchor_positions_z = new double[TOT_ANTENNAS];
-			objective_data.toas = new double[TOT_ANTENNAS];
-			objective_data.toa_errors = new double[TOT_ANTENNAS];
+			objective_data.toa_errors = new double[NUM_ANCHORS];
 			std::vector<double> anchor_x_coords;
 			std::vector<double> anchor_y_coords;
 			std::vector<double> anchor_z_coords;
@@ -759,7 +756,9 @@ void harmonic_localizer_impl::harmonicLocalization(){
 			objective_data.anchor_positions_z = &anchor_z_coords[0];
 			objective_data.toas = &anchor_toas[0];
 			
-			positions = tdoa_newton(objective_data);
+			std::cout << "GOT HERE" << std::endl;
+			positions = tdoa_newton(objective_data, NUM_ANCHORS);
+			std::cout << "GOT HERE2" << std::endl;
 			//if(positions[3] > 2.5){
 			//	std::cout << d_abs_count << " ";
 			//	for(int ii=0; ii < positions.size(); ii++){
@@ -779,12 +778,8 @@ void harmonic_localizer_impl::harmonicLocalization(){
 			//}
 			std::cout << std::endl;
 			//}
-			sendRawSingle(positions);
+			//TODO: Put this back in at some point...sendRawSingle(positions);
 
-			delete objective_data.anchor_positions_x;
-			delete objective_data.anchor_positions_y;
-			delete objective_data.anchor_positions_z;
-			delete objective_data.toas;
 			delete objective_data.toa_errors;
 		}
 
@@ -833,9 +828,7 @@ int harmonic_localizer_impl::work(int noutput_items,
 		compensateRCLP();
 		compensateRCHP();
 		compensateStepTime();
-		std::cout << "DEFINITELY GOT HERE" << std::endl;
 		harmonicLocalization();
-		std::cout << "TOTALLY GOT HERE" << std::endl;
 		//std::cout << d_abs_count << std::endl;
 		//It is assumed that each dataset coming in has already populated d_harmonic_phasors and d_hfreq_key
 		//if(d_abs_count == 9){
