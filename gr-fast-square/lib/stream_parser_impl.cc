@@ -36,6 +36,8 @@ stream_parser_impl::stream_parser_impl(const std::string &seq_num_tag_name)
 		volk_get_alignment() / sizeof(float);
 	set_alignment(std::max(1,alignment_multiple));
 
+	std::stringstream id;
+	id << name() << unique_id();
 	d_me = pmt::string_to_symbol(id.str());
 	d_seq_num_key = pmt::string_to_symbol(seq_num_tag_name);
 
@@ -101,7 +103,7 @@ int stream_parser_impl::general_work(int noutput_items,
 				uint32_t sequence_num = getSequenceNum(data_history[ii][SAMPLES_PER_SEQ-1]);
 				//Add tag to data stream indicating sequence number
 				add_item_tag(0,
-					abs_out_sample_cnt + ii;
+					abs_out_sample_cnt + ii,
 					d_seq_num_key,
 					pmt::from_uint64((uint64_t)sequence_num),
 					d_me

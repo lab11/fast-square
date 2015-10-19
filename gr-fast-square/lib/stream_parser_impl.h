@@ -21,7 +21,7 @@ private:
 	bool d_restarted[4];
 	bool d_wait_for_restart;
 	std::vector<std::ofstream*> timestamp_files;
-	pmt::pmt_t d_seq_num_key;
+	pmt::pmt_t d_seq_num_key, d_me;
 
 protected:
 
