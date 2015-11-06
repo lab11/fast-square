@@ -79,8 +79,10 @@ int stream_parser_impl::general_work(int noutput_items,
 
 		//Loop over all new data
 		if(data_history[ii].size() < SAMPLES_PER_SEQ * 100){
+			//if(ii == 0) std::cout << "start" << std::endl;
 			for(int jj=0; jj < ninput_items[ii]; jj++){
 				data_history[ii].push_back(in[jj]);
+				//if(ii == 0) std::cout << in[jj].real()*32767 << " " << in[jj].imag()*32767 << std::endl;
 			}
 	
 			//Consume items from each input
@@ -103,11 +105,13 @@ int stream_parser_impl::general_work(int noutput_items,
 				uint32_t sequence_num = getSequenceNum(data_history[ii][SAMPLES_PER_SEQ-1]);
 				//Add tag to data stream indicating sequence number
 				add_item_tag(0,
-					abs_out_sample_cnt + ii,
+					abs_out_sample_cnt + out_count,
 					d_seq_num_key,
 					pmt::from_uint64((uint64_t)sequence_num),
 					d_me
 				);
+
+				//std::cout << "sequence_num = " << sequence_num << " out_count = " << abs_out_sample_cnt + out_count << std::endl;
 
 				timeval cur_time;
 				char micro_cstr[7];
@@ -165,24 +169,24 @@ int stream_parser_impl::general_work(int noutput_items,
 		//If snapshot_flag is set, it means we have a full snapshot and all data is aligned in data_history
 		if(snapshot_flag){
 			if(out_count < noutput_items){
-			for(int ii=0; ii < output_items.size(); ii++){
-				for(int jj=0; jj < NUM_STEPS; jj++){
-					int cur_data_idx = SKIP_SAMPLES + SAMPLES_PER_FREQ*jj;
-					gr_complex *optr = ((gr_complex *)(output_items[ii])) + jj*FFT_SIZE + output_offset;
+				for(int ii=0; ii < output_items.size(); ii++){
+					for(int jj=0; jj < NUM_STEPS; jj++){
+						int cur_data_idx = SKIP_SAMPLES + SAMPLES_PER_FREQ*jj;
+						gr_complex *optr = ((gr_complex *)(output_items[ii])) + jj*FFT_SIZE + output_offset;
 
-					//Have to use std::copy since deque isn't contiguous
-					std::copy(data_history[ii].begin() + cur_data_idx, data_history[ii].begin() + (cur_data_idx + FFT_SIZE), optr);
-					//If we're using image frequencies, make sure to take the complex conjugate...
-					if(USE_IMAGE)
-						volk_32fc_conjugate_32fc(optr, optr, FFT_SIZE);
+						//Have to use std::copy since deque isn't contiguous
+						std::copy(data_history[ii].begin() + cur_data_idx, data_history[ii].begin() + (cur_data_idx + FFT_SIZE), optr);
+						//If we're using image frequencies, make sure to take the complex conjugate...
+						if(USE_IMAGE)
+							volk_32fc_conjugate_32fc(optr, optr, FFT_SIZE);
 
+					}
 				}
-			}
-			for(int ii=0; ii < input_items.size(); ii++){
-				data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ-1);
-			}
-			output_offset += d_output_per_seq;
-			out_count++;
+				for(int ii=0; ii < input_items.size(); ii++){
+					data_history[ii].erase(data_history[ii].begin(), data_history[ii].begin()+SAMPLES_PER_SEQ-1);
+				}
+				output_offset += d_output_per_seq;
+				out_count++;
 			}
 	
 			////Prepare an outgoing message containing all data

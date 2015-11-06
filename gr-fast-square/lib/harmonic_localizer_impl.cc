@@ -709,8 +709,8 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	//Finally, determine position based on calculated ToAs...
 	//std::vector<float> positions_fast = tdoa4(imp_in_ns);
 	//std::vector<float> positions = tdoa4_slow(imp_in_m);
-	std::cout << "d_seq_num = " << d_seq_num << " imp_in_m[0] = " << imp_in_m[0] << " imp_in_m[1] = " << imp_in_m[1];
-	std::cout << std::setprecision(9) << " d_prf_est = " << d_prf_est << std::endl;
+	//std::cout << "d_seq_num = " << d_seq_num << " imp_in_m[0] = " << imp_in_m[0] << " imp_in_m[1] = " << imp_in_m[1];
+	//std::cout << std::setprecision(9) << " d_prf_est = " << d_prf_est << std::endl;
 	int cur_seq_num = d_seq_num % NUM_ANTENNAS_PER_ANCHOR;
 	d_visited[cur_seq_num] = 1;
         for(int ii=0; ii < NUM_ANCHORS; ii++){
@@ -719,9 +719,9 @@ void harmonic_localizer_impl::harmonicLocalization(){
 
 	if((d_seq_num % NUM_ANTENNAS_PER_ANCHOR) == (NUM_ANTENNAS_PER_ANCHOR-1)){ //TODO: This still isn't going to work...
 		if(std::accumulate(d_visited.begin(), d_visited.end(), 0) == NUM_ANTENNAS_PER_ANCHOR){
-        		for(int ii=0; ii < TOT_ANTENNAS; ii++){
-				std::cout << d_objective_data.toas[ii] << std::endl;
-			}
+        		//for(int ii=0; ii < TOT_ANTENNAS; ii++){
+			//	std::cout << d_objective_data.toas[ii] << std::endl;
+			//}
 
 			std::vector<float> positions = tdoa_newton(d_objective_data, TOT_ANTENNAS);
 
@@ -753,9 +753,9 @@ void harmonic_localizer_impl::harmonicLocalization(){
 			objective_data.anchor_positions_z = &anchor_z_coords[0];
 			objective_data.toas = &anchor_toas[0];
 			
-			std::cout << "GOT HERE" << std::endl;
+			//std::cout << "GOT HERE" << std::endl;
 			positions = tdoa_newton(objective_data, NUM_ANCHORS);
-			std::cout << "GOT HERE2" << std::endl;
+			//std::cout << "GOT HERE2" << std::endl;
 			//if(positions[3] > 2.5){
 			//	std::cout << d_abs_count << " ";
 			//	for(int ii=0; ii < positions.size(); ii++){
@@ -767,6 +767,7 @@ void harmonic_localizer_impl::harmonicLocalization(){
 			//	std::cout << std::endl;
 			//}
 			//if(d_abs_count == 1374){
+			std::cout << "POSITION: ";
 			for(int ii=0; ii < positions.size(); ii++){
 				std::cout << positions[ii] << " ";
 			}
@@ -819,12 +820,12 @@ int harmonic_localizer_impl::work(int noutput_items,
 		d_harmonic_freqs_f.clear();
 		for(int ii=0; ii < d_harmonic_freqs.size(); ii++)
 			d_harmonic_freqs_f.push_back((float)d_harmonic_freqs[ii]);
-	if(d_seq_num == 15){
-		std::cout << "start" << std::endl;
-		for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
-			std::cout << d_harmonic_phasors[ii].real() << " " << d_harmonic_phasors[ii].imag() << std::endl;
-		}
-	}
+		//if(d_seq_num == 15){
+		//	std::cout << "start" << std::endl;
+		//	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
+		//		std::cout << d_harmonic_phasors[ii].real() << " " << d_harmonic_phasors[ii].imag() << std::endl;
+		//	}
+		//}
 
 		//Put the phasors through various calibration steps
 		correctCOMBPhase();
@@ -845,7 +846,7 @@ int harmonic_localizer_impl::work(int noutput_items,
 			d_start_time = clock();
 		else{
 			clock_t cur_time = clock();
-			std::cout << (double)(cur_time-d_start_time)/(d_abs_count-1)/CLOCKS_PER_SEC << std::endl;
+			//std::cout << (double)(cur_time-d_start_time)/(d_abs_count-1)/CLOCKS_PER_SEC << std::endl;
 		}
 		d_abs_count++;
 		count++;
