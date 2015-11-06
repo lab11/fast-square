@@ -561,6 +561,7 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 	std::vector<int> toas;
 
 	for(int ii=0; ii < NUM_ANCHORS; ii++){
+
 		int anchor_idx = ii*FFT_SIZE_POST;
 		for(int jj=0; jj < NUM_STEPS; jj++){
 			int step_idx = jj*NUM_HARM_PER_STEP_POST;
@@ -587,6 +588,7 @@ std::vector<int> harmonic_localizer_impl::extractToAs(std::vector<gr_complex> hp
 		//Get magnitude of CIR
 		std::vector<float> cir_mag(fft_array.size(), 0);
 		volk_32fc_magnitude_32f_u(&cir_mag[0], d_fft->get_outbuf(), fft_array.size());
+
 
 		//if(d_abs_count == 9 || d_abs_count == 800){
 		//	std::cout << "start" << std::endl;
@@ -685,12 +687,6 @@ void harmonic_localizer_impl::harmonicLocalization(){
 			}
 		}
 	}
-	//if(d_abs_count == 9){
-	//	std::cout << "start" << std::endl;
-	//	for(int ii=0; ii < hp_rearranged.size(); ii++){
-	//		std::cout << hp_rearranged[ii].real() << " " << hp_rearranged[ii].imag() << std::endl;
-	//	}
-	//}
 
 	//Calculate ToAs given phasors and expected phasors
 	float imp_thresholds[4] = {0.2, 0.2, 0.2, 0.2};
@@ -713,7 +709,8 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	//Finally, determine position based on calculated ToAs...
 	//std::vector<float> positions_fast = tdoa4(imp_in_ns);
 	//std::vector<float> positions = tdoa4_slow(imp_in_m);
-	std::cout << "d_seq_num = " << d_seq_num << std::endl;
+	std::cout << "d_seq_num = " << d_seq_num << " imp_in_m[0] = " << imp_in_m[0] << " imp_in_m[1] = " << imp_in_m[1];
+	std::cout << std::setprecision(9) << " d_prf_est = " << d_prf_est << std::endl;
 	int cur_seq_num = d_seq_num % NUM_ANTENNAS_PER_ANCHOR;
 	d_visited[cur_seq_num] = 1;
         for(int ii=0; ii < NUM_ANCHORS; ii++){
@@ -822,6 +819,12 @@ int harmonic_localizer_impl::work(int noutput_items,
 		d_harmonic_freqs_f.clear();
 		for(int ii=0; ii < d_harmonic_freqs.size(); ii++)
 			d_harmonic_freqs_f.push_back((float)d_harmonic_freqs[ii]);
+	if(d_seq_num == 15){
+		std::cout << "start" << std::endl;
+		for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
+			std::cout << d_harmonic_phasors[ii].real() << " " << d_harmonic_phasors[ii].imag() << std::endl;
+		}
+	}
 
 		//Put the phasors through various calibration steps
 		correctCOMBPhase();

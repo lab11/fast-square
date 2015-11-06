@@ -172,7 +172,7 @@ class uhd_fft(gr.top_block):
 		self.connect((self.parser, 1), (self.prf_est, 1))
 		self.connect((self.parser, 2), (self.prf_est, 2))
 		self.connect((self.parser, 3), (self.prf_est, 3))
-		self.h_extract = fast_square.harmonic_extractor(1024, 1, "prf_est", "phasor_calc", "harmonic_freqs")
+		self.h_extract = fast_square.harmonic_extractor(1024, 1, "prf_est", "phasor_calc", "harmonic_freqs", "seq_nums")
 		self.connect((self.prf_est, 0), (self.h_extract, 0))
 		self.connect((self.prf_est, 1), (self.h_extract, 1))
 		self.connect((self.prf_est, 2), (self.h_extract, 2))

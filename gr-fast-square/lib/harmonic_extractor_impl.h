@@ -22,7 +22,8 @@ private:
 	std::vector<double> d_harmonic_freqs;
 	std::vector<float> d_harmonic_nums;
 	std::vector<gr_complex*> d_harm_mix;
-	pmt::pmt_t d_prf_key, d_phasor_key, d_hfreq_key, d_me;
+	pmt::pmt_t d_prf_key, d_phasor_key, d_hfreq_key, d_seq_num_key, d_me;
+	uint32_t d_seq_num;
 	double d_prf_est;
 
 	gr::fxpt_nco d_nco;
@@ -36,7 +37,7 @@ private:
 protected:
 
 public:
-	harmonic_extractor_impl(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_tag_name);
+	harmonic_extractor_impl(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_tag_name, const std::string &seq_num_tag_name);
 	~harmonic_extractor_impl();
 
 	int work(int noutput_items,

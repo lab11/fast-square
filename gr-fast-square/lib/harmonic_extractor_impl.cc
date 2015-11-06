@@ -13,12 +13,12 @@
 namespace gr {
 namespace fast_square {
 
-harmonic_extractor::sptr harmonic_extractor::make(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_tag_name){
+harmonic_extractor::sptr harmonic_extractor::make(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_tag_name, const std::string &seq_num_tag_name){
 	return gnuradio::get_initial_sptr
-		(new harmonic_extractor_impl(fft_size, nthreads, prf_tag_name, phasor_tag_name, hfreq_tag_name));
+		(new harmonic_extractor_impl(fft_size, nthreads, prf_tag_name, phasor_tag_name, hfreq_tag_name, seq_num_tag_name));
 }
 
-harmonic_extractor_impl::harmonic_extractor_impl(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_tag_name)
+harmonic_extractor_impl::harmonic_extractor_impl(int fft_size, int nthreads, const std::string &prf_tag_name, const std::string &phasor_tag_name, const std::string &hfreq_tag_name, const std::string &seq_num_tag_name)
 	: sync_block("harmonic_extractor",
 			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex)),
 			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex))),
@@ -27,6 +27,7 @@ harmonic_extractor_impl::harmonic_extractor_impl(int fft_size, int nthreads, con
 	d_prf_key = pmt::string_to_symbol(prf_tag_name);
 	d_phasor_key = pmt::string_to_symbol(phasor_tag_name);
 	d_hfreq_key = pmt::string_to_symbol(hfreq_tag_name);
+	d_seq_num_key = pmt::string_to_symbol(seq_num_tag_name);
 
 	std::stringstream id;
 	id << name() << unique_id();
@@ -183,17 +184,19 @@ int harmonic_extractor_impl::work(int noutput_items,
 		for(unsigned ii=0; ii < tags.size(); ii++){
 			if(tags[ii].key == d_prf_key)
 				d_prf_est = pmt::to_double(tags[ii].value);
+			if(tags[ii].key == d_seq_num_key)
+				d_seq_num = (uint32_t)pmt::to_uint64(tags[ii].value);
 		}
 
 		//Run harmonic extraction logic
 		harmonicExtraction_bjt_reset();
 		for(int ii=0; ii < input_items.size(); ii++)
 			harmonicExtraction_bjt_fast(((const gr_complex *) input_items[ii]) + count*input_data_size_padded);
-		if(d_abs_count == 9){
+		if(d_seq_num == 15){
 		//std::cout << "start" << std::endl;
-		//gr_complex *data = ((gr_complex *)input_items[0]);
-		//for(int jj=0; jj < NUM_STEPS*FFT_SIZE; jj++)
-		//	std::cout << data[jj].real() << " " << data[jj].imag() << std::endl;
+		gr_complex *data = ((gr_complex *)input_items[0]);
+		for(int jj=0; jj < NUM_STEPS*FFT_SIZE; jj++)
+			std::cout << data[jj].real()*32767 << " " << data[jj].imag()*32767 << std::endl;
 		//printf("%0.15f\n", d_prf_est);
 		//std::cout << "start len = " << d_harmonic_freqs.size() << std::endl;
 		//for(int jj=0; jj < d_harmonic_phasors.size(); jj++){
