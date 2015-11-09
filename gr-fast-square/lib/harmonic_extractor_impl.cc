@@ -95,7 +95,7 @@ void harmonic_extractor_impl::harmonicExtraction_bjt_reset(){
 		float center_freq_harmonic_num = calculateCenterFreqHarmonicNum(ii);
 		for(int jj=0; jj < d_harmonic_nums.size(); jj++){
 			//d_harmonic_freqs_abs.push_back(d_prf_est*d_harmonic_nums_abs[ii][jj]);
-			double harmonic_freq = ((double)d_prf_est*d_harmonic_nums[jj] + 
+			double harmonic_freq = (d_prf_est*d_harmonic_nums[jj] + 
 					(d_prf_est-PRF)*center_freq_harmonic_num - 
 					TUNE_OFFSET);
 			d_harmonic_freqs.push_back(harmonic_freq);//(d_harmonic_nums_abs[ii][jj]-center_freq_harmonic_num)*d_prf_est);

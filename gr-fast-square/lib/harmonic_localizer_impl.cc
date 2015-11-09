@@ -491,9 +491,13 @@ void harmonic_localizer_impl::compensateStepTime(){
 	//Correct any imparted phase from the time difference between observations
 	//TODO: This could be simplified a bit since phase_corr doesn't need to be computed separately for each anchor
 	int num_h = NUM_STEPS*NUM_HARMONICS_PER_STEP;
+	if(d_seq_num == 15)
+		std::cout << "d_harmonic_freqs = " << std::endl;
 	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
 		double phase_corr = (double)(d_time_delay_in_samples[ii])*d_harmonic_freqs[ii%num_h]/SAMPLE_RATE*DECIM_FACTOR;
-		phase_corr = fmod(phase_corr, (2.0*M_PI));
+		if(d_seq_num == 15 && ii < num_h)
+			std::cout << std::setprecision(12) << d_harmonic_freqs[ii%num_h] << std::endl;
+		phase_corr = fmod(phase_corr, (2.0l*M_PI));
 		d_harmonic_phasors[ii] = d_harmonic_phasors[ii]*std::exp(-d_i*(float)(phase_corr));
 	}
 }
@@ -807,7 +811,7 @@ int harmonic_localizer_impl::work(int noutput_items,
 			else if(tags[ii].key == d_hfreq_key)
 				d_harmonic_freqs = pmt::f64vector_elements(tags[ii].value);
 			else if(tags[ii].key == d_prf_key)
-				d_prf_est = (float)pmt::to_double(tags[ii].value);
+				d_prf_est = pmt::to_double(tags[ii].value);
 			else if(tags[ii].key == d_seq_num_key)
 				d_seq_num = (uint32_t)pmt::to_uint64(tags[ii].value);
 		}
@@ -820,18 +824,20 @@ int harmonic_localizer_impl::work(int noutput_items,
 		d_harmonic_freqs_f.clear();
 		for(int ii=0; ii < d_harmonic_freqs.size(); ii++)
 			d_harmonic_freqs_f.push_back((float)d_harmonic_freqs[ii]);
-		//if(d_seq_num == 15){
-		//	std::cout << "start" << std::endl;
-		//	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
-		//		std::cout << d_harmonic_phasors[ii].real() << " " << d_harmonic_phasors[ii].imag() << std::endl;
-		//	}
-		//}
 
 		//Put the phasors through various calibration steps
 		correctCOMBPhase();
 		compensateRCLP();
 		compensateRCHP();
 		compensateStepTime();
+		if(d_seq_num == 15){
+			std::cout << "start" << std::endl;
+			std::cout << "d_prf_est = " << d_prf_est << std::endl;
+			for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
+				std::cout << d_harmonic_phasors[ii].real() << " " << d_harmonic_phasors[ii].imag() << std::endl;
+			}
+		}
+		std::cout << "GOT HERE" << std::endl;
 		harmonicLocalization();
 		//std::cout << d_abs_count << std::endl;
 		//It is assumed that each dataset coming in has already populated d_harmonic_phasors and d_hfreq_key

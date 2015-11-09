@@ -34,7 +34,7 @@ private:
 	std::vector<double> d_toa_errors;
 	std::vector<gr_complex> d_actual_fft;
 	std::vector<int> d_visited;
-	float d_prf_est;
+	double d_prf_est;
 	int d_abs_count;
 	gr_complex d_i;
 	std::string d_gatd_id;
