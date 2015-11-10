@@ -193,6 +193,7 @@ int prf_estimator_impl::work(int noutput_items,
 
 		//Perform PRF estimation
 		double prf_est = prfSearch_fast(d_abs_array);
+		//prf_est = 3.999974964000002e+06l; //TODO: TAKE OUTTTT!
 
 		//std::cout.precision(10);
 		//std::cout << "prf_est = " << prf_est << std::endl;

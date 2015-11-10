@@ -41,6 +41,7 @@
 #define FINE_PRECISION 1e-9
 
 #define INTERP 64
+#define FFT_SIZE_INTERP (FFT_SIZE_POST*INTERP)
 
 #define POW2_CEIL(x) ((int)pow(2,ceil(log2(x))))
 

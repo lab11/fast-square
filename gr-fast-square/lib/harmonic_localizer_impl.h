@@ -11,6 +11,7 @@ namespace gr {
 namespace fast_square {
 
 typedef struct {
+	int num_observations;
         double *toas;
 	double *toa_errors;
         double *anchor_positions_x;
@@ -35,6 +36,7 @@ private:
 	std::vector<gr_complex> d_actual_fft;
 	std::vector<int> d_visited;
 	double d_prf_est;
+	double d_drift_time_in_samples;
 	int d_abs_count;
 	gr_complex d_i;
 	std::string d_gatd_id;
@@ -45,7 +47,7 @@ private:
 	void readToAErrors();
 	void readActualFFT();
 	std::vector<float> tdoa4(std::vector<double> toas);
-	std::vector<float> tdoa_newton(my_function_data &objective_data, int num_toas);
+	std::vector<float> tdoa_newton(my_function_data &objective_data);
 	std::vector<float> tdoa4_slow(std::vector<double> &toas);
 	void genFFTWindow();
 	gr_complex polyval(std::vector<float> &p, gr_complex x);
@@ -59,6 +61,7 @@ private:
 	void compensateRCHP();
 	void compensateStepTime();
 	void harmonicLocalization();
+	void modImps(double *imp_toas, int num_imps, double prf_est);
 
 protected:
 

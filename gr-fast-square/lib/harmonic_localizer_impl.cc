@@ -24,7 +24,7 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	: sync_block("harmonic_localizer",
 			io_signature::make(4, 4, POW2_CEIL(NUM_STEPS*FFT_SIZE)*sizeof(gr_complex)),
 			io_signature::make(0, 0, 0)),
-	d_gatd_id(gatd_id), d_abs_count(0), d_visited(NUM_ANTENNAS_PER_ANCHOR, 0)
+	d_gatd_id(gatd_id), d_abs_count(0), d_visited(NUM_ANTENNAS_PER_ANCHOR, 0), d_drift_time_in_samples(0.0)
 {
 	d_phasor_key = pmt::string_to_symbol(phasor_tag_name);
 	d_hfreq_key = pmt::string_to_symbol(hfreq_tag_name);
@@ -66,7 +66,7 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 	std::vector<std::vector<double> > anchor_antennas(NUM_ANCHORS*NUM_ANTENNAS_PER_ANCHOR);
 	std::vector<double> cur_antenna_pos(3);
 	for(int ii=0; ii < NUM_ANCHORS*NUM_ANTENNAS_PER_ANCHOR; ii++){
-		fread((void*)(&cur_antenna_pos[0]), 3*sizeof(float), 1, source);
+		fread((void*)(&cur_antenna_pos[0]), 3*sizeof(double), 1, source);
 		d_objective_data.anchor_positions_x[ii] = cur_antenna_pos[0];
 		d_objective_data.anchor_positions_y[ii] = cur_antenna_pos[1];
 		d_objective_data.anchor_positions_z[ii] = cur_antenna_pos[2];
@@ -88,6 +88,17 @@ harmonic_localizer_impl::harmonic_localizer_impl(const std::string &phasor_tag_n
 }
 
 harmonic_localizer_impl::~harmonic_localizer_impl(){
+}
+
+void harmonic_localizer_impl::modImps(double *imp_toas, int num_imps, double prf_est){
+	double target_toa = imp_toas[0];
+	double mod_dist = 3e8l/prf_est;
+	for(int jj=1; jj < num_imps; jj++){
+		while(imp_toas[jj] < (target_toa - mod_dist/2))
+			imp_toas[jj] += mod_dist;
+		while(imp_toas[jj] > (target_toa + mod_dist/2))
+			imp_toas[jj] -= mod_dist;
+	}
 }
 
 void harmonic_localizer_impl::readActualFFT(){
@@ -142,32 +153,19 @@ double myfunc(unsigned n, const double *x, double *grad, void *my_func_data)
         my_function_data *func_data = (my_function_data*)my_func_data;
 
         double error_cum = 0.0;
-        for(ii=0; ii < NUM_ANCHORS; ii++){
-                for(jj=0; jj < NUM_ANTENNAS_PER_ANCHOR; jj++){
-                        int cur_idx = ii + jj*NUM_ANCHORS;
-                        error_cum += pow(sqrt((pow(px-func_data->anchor_positions_x[cur_idx],2) + 
-                                               pow(py-func_data->anchor_positions_y[cur_idx],2) + 
-                                               pow(pz-func_data->anchor_positions_z[cur_idx],2))) - (func_data->toas[cur_idx] - t),2);
-                }
+        for(ii=0; ii < func_data->num_observations; ii++){
+              error_cum += pow(sqrt((pow(px-func_data->anchor_positions_x[ii],2) + 
+                                     pow(py-func_data->anchor_positions_y[ii],2) + 
+                                     pow(pz-func_data->anchor_positions_z[ii],2))) - (func_data->toas[ii] - t),2);
         }
         
         return error_cum;
 }
 
-std::vector<float> harmonic_localizer_impl::tdoa_newton(my_function_data &objective_data, int num_toas){
+std::vector<float> harmonic_localizer_impl::tdoa_newton(my_function_data &objective_data){
         int ii;
+	int num_toas = objective_data.num_observations;
         nlopt_opt opt = nlopt_create(NLOPT_LN_BOBYQA, 4); /* algorithm and dimensionality */
-
-        double target_toa = objective_data.toas[0];
-        double mod_dist = 3e8/d_prf_est;
-        for(ii=1; ii < num_toas; ii++){
-                double cand_toa = objective_data.toas[ii];
-                while(cand_toa < target_toa - mod_dist/2)
-                        cand_toa += mod_dist;
-                while(cand_toa > target_toa + mod_dist/2)
-                        cand_toa -= mod_dist;
-                objective_data.toas[ii] = cand_toa;
-        }
 
         nlopt_set_min_objective(opt, myfunc, &objective_data);
 
@@ -491,12 +489,8 @@ void harmonic_localizer_impl::compensateStepTime(){
 	//Correct any imparted phase from the time difference between observations
 	//TODO: This could be simplified a bit since phase_corr doesn't need to be computed separately for each anchor
 	int num_h = NUM_STEPS*NUM_HARMONICS_PER_STEP;
-	if(d_seq_num == 15)
-		std::cout << "d_harmonic_freqs = " << std::endl;
 	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
 		double phase_corr = (double)(d_time_delay_in_samples[ii])*d_harmonic_freqs[ii%num_h]/SAMPLE_RATE*DECIM_FACTOR;
-		if(d_seq_num == 15 && ii < num_h)
-			std::cout << std::setprecision(12) << d_harmonic_freqs[ii%num_h] << std::endl;
 		phase_corr = fmod(phase_corr, (2.0l*M_PI));
 		d_harmonic_phasors[ii] = d_harmonic_phasors[ii]*std::exp(-d_i*(float)(phase_corr));
 	}
@@ -695,6 +689,16 @@ void harmonic_localizer_impl::harmonicLocalization(){
 	//Calculate ToAs given phasors and expected phasors
 	float imp_thresholds[4] = {0.2, 0.2, 0.2, 0.2};
 	std::vector<int> imp_toas = extractToAs(hp_rearranged, imp_thresholds);
+
+	//Subtract any delay induced between observations
+	for(int ii=0; ii < imp_toas.size(); ii++){
+		imp_toas[ii] -= d_drift_time_in_samples;
+	}
+	if((d_seq_num % NUM_ANTENNAS_PER_ANCHOR) == 0)
+		d_drift_time_in_samples = 0.0;
+	d_drift_time_in_samples += (PRF-d_prf_est)*(TICKS_PER_SEQUENCE/SAMPLE_RATE)*FFT_SIZE_INTERP;
+
+	//Convert to meters in case that is interesting
 	std::vector<double> imp_in_ns;
 	for(int ii=0; ii < imp_toas.size(); ii++){
 		double cur_toa = (double)imp_toas[ii]/(d_prf_est*FFT_SIZE_POST)/INTERP*1e9;
@@ -705,16 +709,8 @@ void harmonic_localizer_impl::harmonicLocalization(){
 		double cur_toa = (double)imp_toas[ii]/(d_prf_est*FFT_SIZE_POST)/INTERP*3e8;
 		imp_in_m.push_back(cur_toa);
 	}
-	//for(int ii=0; ii < imp_in_ns.size(); ii++){
-	//	std::cout << imp_in_ns[ii] << " ";
-	//}
-	//std::cout << std::endl;
 	
 	//Finally, determine position based on calculated ToAs...
-	//std::vector<float> positions_fast = tdoa4(imp_in_ns);
-	//std::vector<float> positions = tdoa4_slow(imp_in_m);
-	//std::cout << "d_seq_num = " << d_seq_num << " imp_in_m[0] = " << imp_in_m[0] << " imp_in_m[1] = " << imp_in_m[1];
-	//std::cout << std::setprecision(9) << " d_prf_est = " << d_prf_est << std::endl;
 	int cur_seq_num = d_seq_num % NUM_ANTENNAS_PER_ANCHOR;
 	d_visited[cur_seq_num] = 1;
         for(int ii=0; ii < NUM_ANCHORS; ii++){
@@ -723,43 +719,41 @@ void harmonic_localizer_impl::harmonicLocalization(){
 
 	if((d_seq_num % NUM_ANTENNAS_PER_ANCHOR) == (NUM_ANTENNAS_PER_ANCHOR-1)){ //TODO: This still isn't going to work...
 		if(std::accumulate(d_visited.begin(), d_visited.end(), 0) == NUM_ANTENNAS_PER_ANCHOR){
-        		//for(int ii=0; ii < TOT_ANTENNAS; ii++){
-			//	std::cout << d_objective_data.toas[ii] << std::endl;
+			//There is ambiguity wrt. the PRF, so let's get rid of it
+			modImps(d_objective_data.toas, TOT_ANTENNAS, d_prf_est);
+
+			d_objective_data.num_observations = NUM_ANCHORS;//TOT_ANTENNAS;
+			std::vector<float> positions = tdoa_newton(d_objective_data);
+
+			////Determine which toas are closest to the 'average'
+			//my_function_data objective_data;
+			//objective_data.toa_errors = new double[NUM_ANCHORS];
+			//std::vector<double> anchor_x_coords;
+			//std::vector<double> anchor_y_coords;
+			//std::vector<double> anchor_z_coords;
+			//std::vector<double> anchor_toas;
+			//for(int ii=0; ii < NUM_ANCHORS; ii++){
+			//	double min_toa_error = +1e6; //Something large...
+			//	int min_toa_error_idx = 0;
+			//	for(int jj=0; jj < NUM_ANTENNAS_PER_ANCHOR; jj++){
+			//		int cur_idx = jj*NUM_ANCHORS+ii;
+			//		double cur_toa_error = d_objective_data.toa_errors[jj*NUM_ANCHORS+ii];
+			//		if(abs(cur_toa_error) < min_toa_error){
+			//			min_toa_error_idx = cur_idx;
+			//			min_toa_error = abs(cur_toa_error);
+			//		}
+			//	}
+			//	anchor_x_coords.push_back(d_objective_data.anchor_positions_x[min_toa_error_idx]);
+			//	anchor_y_coords.push_back(d_objective_data.anchor_positions_y[min_toa_error_idx]);
+			//	anchor_z_coords.push_back(d_objective_data.anchor_positions_z[min_toa_error_idx]);
+			//	anchor_toas.push_back(d_objective_data.toas[min_toa_error_idx]);
 			//}
-
-			std::vector<float> positions = tdoa_newton(d_objective_data, TOT_ANTENNAS);
-
-			//Determine which toas are closest to the 'average'
-			my_function_data objective_data;
-			objective_data.toa_errors = new double[NUM_ANCHORS];
-			std::vector<double> anchor_x_coords;
-			std::vector<double> anchor_y_coords;
-			std::vector<double> anchor_z_coords;
-			std::vector<double> anchor_toas;
-			for(int ii=0; ii < NUM_ANCHORS; ii++){
-				double min_toa_error = +1e6; //Something large...
-				int min_toa_error_idx = 0;
-				for(int jj=0; jj < NUM_ANTENNAS_PER_ANCHOR; jj++){
-					int cur_idx = jj*NUM_ANCHORS+ii;
-					double cur_toa_error = d_objective_data.toa_errors[jj*NUM_ANCHORS+ii];
-					if(abs(cur_toa_error) < min_toa_error){
-						min_toa_error_idx = cur_idx;
-						min_toa_error = abs(cur_toa_error);
-					}
-				}
-				anchor_x_coords.push_back(d_objective_data.anchor_positions_x[min_toa_error_idx]);
-				anchor_y_coords.push_back(d_objective_data.anchor_positions_y[min_toa_error_idx]);
-				anchor_z_coords.push_back(d_objective_data.anchor_positions_z[min_toa_error_idx]);
-				anchor_toas.push_back(d_objective_data.toas[min_toa_error_idx]);
-			}
-			objective_data.anchor_positions_x = &anchor_x_coords[0];
-			objective_data.anchor_positions_y = &anchor_y_coords[0];
-			objective_data.anchor_positions_z = &anchor_z_coords[0];
-			objective_data.toas = &anchor_toas[0];
-			
-			//std::cout << "GOT HERE" << std::endl;
-			positions = tdoa_newton(objective_data, NUM_ANCHORS);
-			//std::cout << "GOT HERE2" << std::endl;
+			//objective_data.anchor_positions_x = &anchor_x_coords[0];
+			//objective_data.anchor_positions_y = &anchor_y_coords[0];
+			//objective_data.anchor_positions_z = &anchor_z_coords[0];
+			//objective_data.toas = &anchor_toas[0];
+			//
+			//positions = tdoa_newton(objective_data, NUM_ANCHORS);
 			//if(positions[3] > 2.5){
 			//	std::cout << d_abs_count << " ";
 			//	for(int ii=0; ii < positions.size(); ii++){
@@ -770,19 +764,14 @@ void harmonic_localizer_impl::harmonicLocalization(){
 			//	}
 			//	std::cout << std::endl;
 			//}
-			//if(d_abs_count == 1374){
 			std::cout << "POSITION: ";
 			for(int ii=0; ii < positions.size(); ii++){
 				std::cout << positions[ii] << " ";
 			}
-			//for(int ii=0; ii < positions_fast.size(); ii++){
-			//	std::cout << positions_fast[ii] << " ";
-			//}
 			std::cout << std::endl;
-			//}
 			//TODO: Put this back in at some point...sendRawSingle(positions);
 
-			delete objective_data.toa_errors;
+			//TODO: PUT BACK INdelete objective_data.toa_errors;
 		}
 
 		//Reset visited vector
@@ -830,14 +819,13 @@ int harmonic_localizer_impl::work(int noutput_items,
 		compensateRCLP();
 		compensateRCHP();
 		compensateStepTime();
-		if(d_seq_num == 15){
-			std::cout << "start" << std::endl;
-			std::cout << "d_prf_est = " << d_prf_est << std::endl;
-			for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
-				std::cout << d_harmonic_phasors[ii].real() << " " << d_harmonic_phasors[ii].imag() << std::endl;
-			}
-		}
-		std::cout << "GOT HERE" << std::endl;
+		//if(d_seq_num == 15){
+		//	std::cout << "start" << std::endl;
+		//	std::cout << "d_prf_est = " << d_prf_est << std::endl;
+		//	for(int ii=0; ii < d_harmonic_phasors.size(); ii++){
+		//		std::cout << d_harmonic_phasors[ii].real() << " " << d_harmonic_phasors[ii].imag() << std::endl;
+		//	}
+		//}
 		harmonicLocalization();
 		//std::cout << d_abs_count << std::endl;
 		//It is assumed that each dataset coming in has already populated d_harmonic_phasors and d_hfreq_key
@@ -852,7 +840,7 @@ int harmonic_localizer_impl::work(int noutput_items,
 			d_start_time = clock();
 		else{
 			clock_t cur_time = clock();
-			//std::cout << (double)(cur_time-d_start_time)/(d_abs_count-1)/CLOCKS_PER_SEC << std::endl;
+			//std::cout << "d_seq_num = " << d_seq_num << ", time = " << (double)(cur_time-d_start_time)/(d_abs_count-1)/CLOCKS_PER_SEC << std::endl;
 		}
 		d_abs_count++;
 		count++;
